@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../models/vehicle.dart';
+import '../services/api_service.dart';
 import '../services/storage_service.dart';
 
 class VehicleScreen extends StatefulWidget {
@@ -16,7 +17,7 @@ class VehicleScreen extends StatefulWidget {
     final yearCtrl = TextEditingController(text: vehicle?.year.toString() ?? DateTime.now().year.toString());
     final plateCtrl = TextEditingController(text: vehicle?.licensePlate ?? '');
     final vinCtrl = TextEditingController(text: vehicle?.vin ?? '');
-    final mileageCtrl = TextEditingController(text: vehicle != null ? vehicle.currentMileage.toString() : '');
+    final mileageCtrl = TextEditingController(text: vehicle != null && vehicle.currentMileage > 0 ? vehicle.currentMileage.toString() : '');
     final oilMileageCtrl = TextEditingController(text: vehicle != null && vehicle.oilChangeDueMileage > 0 ? vehicle.oilChangeDueMileage.toString() : '');
     final insuranceCompanyCtrl = TextEditingController(text: vehicle?.insuranceCompany ?? '');
     final insurancePolicyCtrl = TextEditingController(text: vehicle?.insurancePolicyNumber ?? '');
@@ -25,181 +26,344 @@ class VehicleScreen extends StatefulWidget {
 
     DateTime? regExpiry = vehicle?.registrationExpiry;
     const popularMakes = ['Toyota', 'Honda', 'Tesla', 'Ford', 'Hyundai', 'BMW', 'Mercedes', 'Kia'];
+    List<String> availableModels = [];
+    bool isDecodingVin = false;
+    bool isFetchingModels = false;
+    bool userEditedPrice = isEdit;
+    String decodedBodyClass = '';
 
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            left: 20,
-            right: 20,
-            top: 16,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      isEdit ? 'Edit Vehicle' : 'Add Car / Vehicle',
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
-                    ),
-                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(ctx).pop(false)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: popularMakes.map((m) {
-                    return ChoiceChip(
-                      label: Text(m, style: const TextStyle(fontSize: 11)),
-                      selected: makeCtrl.text.trim().toLowerCase() == m.toLowerCase(),
-                      onSelected: (_) => setModalState(() => makeCtrl.text = m),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 1,
-                      child: TextField(
-                        controller: yearCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: makeCtrl,
-                        decoration: const InputDecoration(labelText: 'Make *', border: OutlineInputBorder()),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: modelCtrl,
-                        decoration: const InputDecoration(labelText: 'Model', border: OutlineInputBorder()),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: nickCtrl,
-                  decoration: const InputDecoration(labelText: 'Nickname (auto-named if blank)', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 10),
-                ExpansionTile(
-                  tilePadding: EdgeInsets.zero,
-                  title: const Text('Optional Mileage, Plate, VIN & Insurance', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  children: [
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(child: TextField(controller: plateCtrl, decoration: const InputDecoration(labelText: 'License Plate', border: OutlineInputBorder()))),
-                        const SizedBox(width: 10),
-                        Expanded(child: TextField(controller: vinCtrl, decoration: const InputDecoration(labelText: 'VIN Number', border: OutlineInputBorder()))),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(child: TextField(controller: mileageCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Current Mileage', border: OutlineInputBorder()))),
-                        const SizedBox(width: 10),
-                        Expanded(child: TextField(controller: oilMileageCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Next Oil Change (Mi)', border: OutlineInputBorder()))),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(child: TextField(controller: valueCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Est. Value', prefixText: '\$ ', border: OutlineInputBorder()))),
-                        const SizedBox(width: 10),
-                        Expanded(child: TextField(controller: memberCtrl, decoration: const InputDecoration(labelText: 'Driver', border: OutlineInputBorder()))),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(child: TextField(controller: insuranceCompanyCtrl, decoration: const InputDecoration(labelText: 'Insurance Co.', border: OutlineInputBorder()))),
-                        const SizedBox(width: 10),
-                        Expanded(child: TextField(controller: insurancePolicyCtrl, decoration: const InputDecoration(labelText: 'Policy #', border: OutlineInputBorder()))),
-                      ],
-                    ),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.event, color: Colors.blue),
-                      title: Text(regExpiry != null ? 'Reg. Expiry: ${DateFormat.yMMMd().format(regExpiry!)}' : 'Set Registration Expiry'),
-                      trailing: TextButton(
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: regExpiry ?? DateTime.now().add(const Duration(days: 180)),
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2035),
-                          );
-                          if (picked != null) setModalState(() => regExpiry = picked);
-                        },
-                        child: const Text('Pick Date'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                    icon: const Icon(Icons.directions_car_rounded),
-                    label: Text(isEdit ? 'Save Vehicle' : 'Add Vehicle', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    onPressed: () async {
-                      if (makeCtrl.text.trim().isEmpty) return;
-                      const uuid = Uuid();
-                      final updated = Vehicle(
-                        id: vehicle?.id ?? uuid.v4(),
-                        nickname: nickCtrl.text.trim().isEmpty ? '${yearCtrl.text} ${makeCtrl.text} ${modelCtrl.text}'.trim() : nickCtrl.text.trim(),
-                        make: makeCtrl.text.trim(),
-                        model: modelCtrl.text.trim(),
-                        year: int.tryParse(yearCtrl.text) ?? DateTime.now().year,
-                        licensePlate: plateCtrl.text.trim(),
-                        vin: vinCtrl.text.trim(),
-                        currentMileage: int.tryParse(mileageCtrl.text) ?? 0,
-                        oilChangeDueMileage: int.tryParse(oilMileageCtrl.text) ?? 0,
-                        registrationExpiry: regExpiry,
-                        insuranceCompany: insuranceCompanyCtrl.text.trim(),
-                        insurancePolicyNumber: insurancePolicyCtrl.text.trim(),
-                        assignedMember: memberCtrl.text.trim().isEmpty ? 'Entire Family' : memberCtrl.text.trim(),
-                        estimatedValue: double.tryParse(valueCtrl.text) ?? 0.0,
-                        logs: vehicle?.logs,
-                      );
+        builder: (ctx, setModalState) {
+          void recalculateAutoPrice() {
+            if (userEditedPrice) return;
+            final make = makeCtrl.text.trim();
+            final year = int.tryParse(yearCtrl.text) ?? DateTime.now().year;
+            if (make.isEmpty) return;
+            final est = ApiService.instance.estimateVehicleValue(
+              make: make,
+              model: modelCtrl.text.trim(),
+              year: year,
+              mileage: int.tryParse(mileageCtrl.text) ?? 0,
+              bodyClass: decodedBodyClass,
+            );
+            valueCtrl.text = est.toStringAsFixed(0);
+          }
 
-                      if (isEdit) {
-                        await StorageService.instance.updateVehicle(updated);
-                      } else {
-                        await StorageService.instance.addVehicle(updated);
-                      }
+          Future<void> loadModels() async {
+            final make = makeCtrl.text.trim();
+            final year = int.tryParse(yearCtrl.text) ?? DateTime.now().year;
+            if (make.isEmpty) return;
+            setModalState(() => isFetchingModels = true);
+            final models = await ApiService.instance.fetchModelsForMakeYear(make, year);
+            if (ctx.mounted) {
+              setModalState(() {
+                availableModels = models;
+                isFetchingModels = false;
+              });
+            }
+          }
 
-                      if (ctx.mounted) Navigator.of(ctx).pop(true);
-                    },
-                  ),
-                ),
-              ],
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              left: 20,
+              right: 20,
+              top: 16,
             ),
-          ),
-        ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        isEdit ? 'Edit Vehicle' : 'Add Car / Vehicle',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
+                      ),
+                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(ctx).pop(false)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 1. OPTIONAL 1-TAP VIN DECODER
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: vinCtrl,
+                          textCapitalization: TextCapitalization.characters,
+                          decoration: const InputDecoration(
+                            labelText: 'Have a VIN? Paste to Auto-Fill (Optional)',
+                            hintText: '17-char VIN',
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.tonal(
+                        onPressed: isDecodingVin
+                            ? null
+                            : () async {
+                                setModalState(() => isDecodingVin = true);
+                                final res = await ApiService.instance.decodeVin(vinCtrl.text);
+                                if (ctx.mounted) {
+                                  setModalState(() {
+                                    isDecodingVin = false;
+                                    if (res.success) {
+                                      makeCtrl.text = res.make;
+                                      modelCtrl.text = res.model;
+                                      yearCtrl.text = res.year.toString();
+                                      decodedBodyClass = res.bodyClass;
+                                      userEditedPrice = false;
+                                      recalculateAutoPrice();
+                                      ScaffoldMessenger.of(ctx).showSnackBar(
+                                        SnackBar(content: Text('✓ Decoded ${res.year} ${res.make} ${res.model}'), behavior: SnackBarBehavior.floating),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(ctx).showSnackBar(
+                                        const SnackBar(content: Text('Could not decode VIN. Check characters or enter Make/Model below.'), behavior: SnackBarBehavior.floating),
+                                      );
+                                    }
+                                  });
+                                }
+                              },
+                        child: isDecodingVin
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Text('Decode VIN'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // 2. 1-TAP MAKE CHIPS
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: popularMakes.map((m) {
+                      return ChoiceChip(
+                        label: Text(m, style: const TextStyle(fontSize: 11)),
+                        selected: makeCtrl.text.trim().toLowerCase() == m.toLowerCase(),
+                        onSelected: (_) {
+                          setModalState(() {
+                            makeCtrl.text = m;
+                            recalculateAutoPrice();
+                          });
+                          loadModels();
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 10),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 1,
+                        child: TextField(
+                          controller: yearCtrl,
+                          keyboardType: TextInputType.number,
+                          onChanged: (_) => setModalState(() => recalculateAutoPrice()),
+                          decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 2,
+                        child: TextField(
+                          controller: makeCtrl,
+                          onChanged: (_) => setModalState(() => recalculateAutoPrice()),
+                          decoration: const InputDecoration(labelText: 'Make *', border: OutlineInputBorder()),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 2,
+                        child: TextField(
+                          controller: modelCtrl,
+                          onChanged: (_) => setModalState(() => recalculateAutoPrice()),
+                          decoration: InputDecoration(
+                            labelText: 'Model',
+                            border: const OutlineInputBorder(),
+                            suffixIcon: isFetchingModels
+                                ? const Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // LIVE NHTSA MODEL SUGGESTION CHIPS
+                  if (availableModels.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 34,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: availableModels.length > 25 ? 25 : availableModels.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 6),
+                        itemBuilder: (_, idx) {
+                          final mod = availableModels[idx];
+                          return ActionChip(
+                            label: Text(mod, style: const TextStyle(fontSize: 11)),
+                            onPressed: () => setModalState(() {
+                              modelCtrl.text = mod;
+                              recalculateAutoPrice();
+                            }),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+
+                  // 3. AUTO-ESTIMATED VALUE (EDITABLE BY USER!)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: valueCtrl,
+                          keyboardType: TextInputType.number,
+                          onChanged: (_) => userEditedPrice = true,
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                          decoration: const InputDecoration(
+                            labelText: 'Est. Value (Auto-calculated, editable)',
+                            prefixText: '\$ ',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        tooltip: 'Recalculate Market Estimate',
+                        icon: const Icon(Icons.auto_awesome_rounded),
+                        onPressed: () {
+                          setModalState(() {
+                            userEditedPrice = false;
+                            recalculateAutoPrice();
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  TextField(
+                    controller: nickCtrl,
+                    decoration: const InputDecoration(labelText: 'Nickname (auto-named if blank)', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 8),
+
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: const Text('Optional Mileage, Plate & Insurance', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    children: [
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(child: TextField(controller: plateCtrl, decoration: const InputDecoration(labelText: 'License Plate', border: OutlineInputBorder()))),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: mileageCtrl,
+                              keyboardType: TextInputType.number,
+                              onChanged: (_) => setModalState(() => recalculateAutoPrice()),
+                              decoration: const InputDecoration(labelText: 'Current Mileage', border: OutlineInputBorder()),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(child: TextField(controller: oilMileageCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Next Oil Change (Mi)', border: OutlineInputBorder()))),
+                          const SizedBox(width: 10),
+                          Expanded(child: TextField(controller: memberCtrl, decoration: const InputDecoration(labelText: 'Driver', border: OutlineInputBorder()))),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(child: TextField(controller: insuranceCompanyCtrl, decoration: const InputDecoration(labelText: 'Insurance Co.', border: OutlineInputBorder()))),
+                          const SizedBox(width: 10),
+                          Expanded(child: TextField(controller: insurancePolicyCtrl, decoration: const InputDecoration(labelText: 'Policy #', border: OutlineInputBorder()))),
+                        ],
+                      ),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.event, color: Colors.blue),
+                        title: Text(regExpiry != null ? 'Reg. Expiry: ${DateFormat.yMMMd().format(regExpiry!)}' : 'Set Registration Expiry'),
+                        trailing: TextButton(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: regExpiry ?? DateTime.now().add(const Duration(days: 180)),
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2035),
+                            );
+                            if (picked != null) setModalState(() => regExpiry = picked);
+                          },
+                          child: const Text('Pick Date'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      icon: const Icon(Icons.directions_car_rounded),
+                      label: Text(isEdit ? 'Save Vehicle' : 'Add Vehicle', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      onPressed: () async {
+                        if (makeCtrl.text.trim().isEmpty) return;
+                        const uuid = Uuid();
+                        final updated = Vehicle(
+                          id: vehicle?.id ?? uuid.v4(),
+                          nickname: nickCtrl.text.trim().isEmpty ? '${yearCtrl.text} ${makeCtrl.text} ${modelCtrl.text}'.trim() : nickCtrl.text.trim(),
+                          make: makeCtrl.text.trim(),
+                          model: modelCtrl.text.trim(),
+                          year: int.tryParse(yearCtrl.text) ?? DateTime.now().year,
+                          licensePlate: plateCtrl.text.trim(),
+                          vin: vinCtrl.text.trim(),
+                          currentMileage: int.tryParse(mileageCtrl.text) ?? 0,
+                          oilChangeDueMileage: int.tryParse(oilMileageCtrl.text) ?? 0,
+                          registrationExpiry: regExpiry,
+                          insuranceCompany: insuranceCompanyCtrl.text.trim(),
+                          insurancePolicyNumber: insurancePolicyCtrl.text.trim(),
+                          assignedMember: memberCtrl.text.trim().isEmpty ? 'Entire Family' : memberCtrl.text.trim(),
+                          estimatedValue: double.tryParse(valueCtrl.text.replaceAll(',', '')) ?? 0.0,
+                          logs: vehicle?.logs,
+                        );
+
+                        if (isEdit) {
+                          await StorageService.instance.updateVehicle(updated);
+                        } else {
+                          await StorageService.instance.addVehicle(updated);
+                        }
+
+                        if (ctx.mounted) Navigator.of(ctx).pop(true);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
     return saved ?? false;

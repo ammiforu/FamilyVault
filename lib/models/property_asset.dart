@@ -1,13 +1,17 @@
 class PropertyAsset {
   final String id;
-  String title; // e.g. "Primary Home", "Vacation Lake House", "Farm Land"
-  String propertyType; // Single Family, Condo, Land, Rental, Commercial
+  String title;
+  String propertyType;
   String fullAddress;
   double? latitude;
   double? longitude;
   double purchasePrice;
   double estimatedMarketValue;
   double mortgageRemaining;
+  int squareFeet;
+  double bedrooms;
+  double bathrooms;
+  int yearBuilt;
   String parcelNumber;
   DateTime? propertyTaxDueDate;
   String assignedMember;
@@ -23,6 +27,10 @@ class PropertyAsset {
     this.purchasePrice = 0.0,
     this.estimatedMarketValue = 0.0,
     this.mortgageRemaining = 0.0,
+    this.squareFeet = 0,
+    this.bedrooms = 0,
+    this.bathrooms = 0,
+    this.yearBuilt = 0,
     this.parcelNumber = '',
     this.propertyTaxDueDate,
     this.assignedMember = 'Entire Family',
@@ -41,6 +49,10 @@ class PropertyAsset {
     'purchasePrice': purchasePrice,
     'estimatedMarketValue': estimatedMarketValue,
     'mortgageRemaining': mortgageRemaining,
+    'squareFeet': squareFeet,
+    'bedrooms': bedrooms,
+    'bathrooms': bathrooms,
+    'yearBuilt': yearBuilt,
     'parcelNumber': parcelNumber,
     'propertyTaxDueDate': propertyTaxDueDate?.toIso8601String(),
     'assignedMember': assignedMember,
@@ -57,6 +69,10 @@ class PropertyAsset {
     purchasePrice: (json['purchasePrice'] as num?)?.toDouble() ?? 0.0,
     estimatedMarketValue: (json['estimatedMarketValue'] as num?)?.toDouble() ?? 0.0,
     mortgageRemaining: (json['mortgageRemaining'] as num?)?.toDouble() ?? 0.0,
+    squareFeet: json['squareFeet'] as int? ?? 0,
+    bedrooms: (json['bedrooms'] as num?)?.toDouble() ?? 0.0,
+    bathrooms: (json['bathrooms'] as num?)?.toDouble() ?? 0.0,
+    yearBuilt: json['yearBuilt'] as int? ?? 0,
     parcelNumber: json['parcelNumber'] as String? ?? '',
     propertyTaxDueDate: json['propertyTaxDueDate'] != null
         ? DateTime.tryParse(json['propertyTaxDueDate'] as String)

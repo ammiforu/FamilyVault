@@ -28,6 +28,10 @@ class PropertyScreen extends StatefulWidget {
     final purchaseCtrl = TextEditingController(text: prop != null && prop.purchasePrice > 0 ? prop.purchasePrice.toStringAsFixed(0) : '');
     final valueCtrl = TextEditingController(text: prop != null && prop.estimatedMarketValue > 0 ? prop.estimatedMarketValue.toStringAsFixed(0) : '');
     final mortgageCtrl = TextEditingController(text: prop != null && prop.mortgageRemaining > 0 ? prop.mortgageRemaining.toStringAsFixed(0) : '');
+    final sqFtCtrl = TextEditingController(text: prop != null && prop.squareFeet > 0 ? prop.squareFeet.toString() : '');
+    final bedsCtrl = TextEditingController(text: prop != null && prop.bedrooms > 0 ? prop.bedrooms.toString() : '');
+    final bathsCtrl = TextEditingController(text: prop != null && prop.bathrooms > 0 ? prop.bathrooms.toString() : '');
+    final yearBuiltCtrl = TextEditingController(text: prop != null && prop.yearBuilt > 0 ? prop.yearBuilt.toString() : '');
     final parcelCtrl = TextEditingController(text: prop?.parcelNumber ?? '');
     final notesCtrl = TextEditingController(text: prop?.notes ?? '');
     final memberCtrl = TextEditingController(text: prop?.assignedMember ?? 'Entire Family');
@@ -39,6 +43,7 @@ class PropertyScreen extends StatefulWidget {
 
     List<AddressSuggestion> suggestions = [];
     bool isSearching = false;
+    bool isFetchingOsm = false;
     bool noResultsFound = false;
     Timer? debounce;
     final pickerMapController = MapController();
@@ -191,7 +196,7 @@ class PropertyScreen extends StatefulWidget {
                             dense: true,
                             leading: const Icon(Icons.location_on_rounded, color: Colors.redAccent, size: 20),
                             title: Text(s.displayName, style: const TextStyle(fontSize: 13)),
-                            onTap: () {
+                            onTap: () async {
                               setModalState(() {
                                 addressCtrl.text = s.displayName;
                                 if (titleCtrl.text.trim().isEmpty) {
@@ -202,8 +207,21 @@ class PropertyScreen extends StatefulWidget {
                                 hasPickedLocation = true;
                                 suggestions = [];
                                 noResultsFound = false;
+                                isFetchingOsm = true;
                               });
                               pickerMapController.move(LatLng(s.latitude, s.longitude), 15.5);
+                              final osm = await ApiService.instance.fetchOsmBuildingDetails(s.latitude, s.longitude);
+                              if (ctx.mounted) {
+                                setModalState(() {
+                                  isFetchingOsm = false;
+                                  if (osm.squareFeet > 0 && sqFtCtrl.text.isEmpty) {
+                                    sqFtCtrl.text = osm.squareFeet.toString();
+                                  }
+                                  if (osm.yearBuilt > 0 && yearBuiltCtrl.text.isEmpty) {
+                                    yearBuiltCtrl.text = osm.yearBuilt.toString();
+                                  }
+                                });
+                              }
                             },
                           );
                         }).toList(),
@@ -238,13 +256,19 @@ class PropertyScreen extends StatefulWidget {
                               selectedLat = point.latitude;
                               selectedLng = point.longitude;
                               hasPickedLocation = true;
+                              isFetchingOsm = true;
                             });
                             final resolved = await ApiService.instance.reverseGeocode(point.latitude, point.longitude);
+                            final osm = await ApiService.instance.fetchOsmBuildingDetails(point.latitude, point.longitude);
                             if (ctx.mounted) {
                               setModalState(() {
+                                isFetchingOsm = false;
                                 addressCtrl.text = resolved;
                                 if (titleCtrl.text.trim().isEmpty) {
                                   titleCtrl.text = resolved.split(',').first.trim();
+                                }
+                                if (osm.squareFeet > 0 && sqFtCtrl.text.isEmpty) {
+                                  sqFtCtrl.text = osm.squareFeet.toString();
                                 }
                               });
                             }
@@ -272,7 +296,7 @@ class PropertyScreen extends StatefulWidget {
                   ),
                   const SizedBox(height: 14),
 
-                  // 4. NICKNAME
+                  // 4. NICKNAME + AUTO-DETECTED HOME DETAILS
                   TextField(
                     controller: titleCtrl,
                     decoration: const InputDecoration(
@@ -281,7 +305,53 @@ class PropertyScreen extends StatefulWidget {
                       border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: TextField(
+                          controller: sqFtCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: isFetchingOsm ? 'Detecting Sq Ft...' : 'Sq Ft (auto-detected if mapped)',
+                            border: const OutlineInputBorder(),
+                            suffixText: 'sq ft',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: bedsCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(labelText: 'Beds', border: OutlineInputBorder()),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: bathsCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(labelText: 'Baths', border: OutlineInputBorder()),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (addressCtrl.text.trim().isNotEmpty)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.open_in_new_rounded, size: 15),
+                        label: const Text('Lookup Sq Ft & Value on Zillow', style: TextStyle(fontSize: 12)),
+                        onPressed: () {
+                          final slug = Uri.encodeComponent(addressCtrl.text.trim().replaceAll(' ', '-'));
+                          launchUrl(Uri.parse('https://www.zillow.com/homes/${slug}_rb/'), mode: LaunchMode.externalApplication);
+                        },
+                      ),
+                    ),
+                  const SizedBox(height: 4),
 
                   // 5. PROGRESSIVE DISCLOSURE FOR FINANCIAL / DEED DETAILS
                   ExpansionTile(
@@ -369,6 +439,10 @@ class PropertyScreen extends StatefulWidget {
                           purchasePrice: double.tryParse(purchaseCtrl.text) ?? 0.0,
                           estimatedMarketValue: double.tryParse(valueCtrl.text) ?? 0.0,
                           mortgageRemaining: double.tryParse(mortgageCtrl.text) ?? 0.0,
+                          squareFeet: int.tryParse(sqFtCtrl.text) ?? 0,
+                          bedrooms: double.tryParse(bedsCtrl.text) ?? 0.0,
+                          bathrooms: double.tryParse(bathsCtrl.text) ?? 0.0,
+                          yearBuilt: int.tryParse(yearBuiltCtrl.text) ?? 0,
                           parcelNumber: parcelCtrl.text.trim(),
                           assignedMember: memberCtrl.text.trim().isEmpty ? 'Entire Family' : memberCtrl.text.trim(),
                           notes: notesCtrl.text.trim(),
@@ -634,7 +708,15 @@ class _PropertyScreenState extends State<PropertyScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(p.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-                                Text(p.propertyType, style: theme.textTheme.bodySmall),
+                                Text(
+                                  [
+                                    p.propertyType,
+                                    if (p.squareFeet > 0) '${NumberFormat.decimalPattern().format(p.squareFeet)} sq ft',
+                                    if (p.bedrooms > 0) '${p.bedrooms.toStringAsFixed(p.bedrooms % 1 == 0 ? 0 : 1)} bd',
+                                    if (p.bathrooms > 0) '${p.bathrooms.toStringAsFixed(p.bathrooms % 1 == 0 ? 0 : 1)} ba',
+                                  ].join(' • '),
+                                  style: theme.textTheme.bodySmall,
+                                ),
                               ],
                             ),
                           ),
