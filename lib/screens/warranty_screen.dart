@@ -11,23 +11,7 @@ import '../services/storage_service.dart';
 class WarrantyScreen extends StatefulWidget {
   const WarrantyScreen({super.key});
 
-  @override
-  State<WarrantyScreen> createState() => _WarrantyScreenState();
-}
-
-class _WarrantyScreenState extends State<WarrantyScreen> {
-  final currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
-  String _searchQuery = '';
-
-  void _copy(String text, String label) {
-    if (text.isEmpty) return;
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$label copied to clipboard!'), behavior: SnackBarBehavior.floating),
-    );
-  }
-
-  void _showAddWarrantyDialog([WarrantyReceipt? warranty]) {
+  static Future<bool> showAddWarrantySheet(BuildContext context, [WarrantyReceipt? warranty]) async {
     final isEdit = warranty != null;
     final nameCtrl = TextEditingController(text: warranty?.itemName ?? '');
     final catCtrl = TextEditingController(text: warranty?.category ?? 'Electronics');
@@ -42,18 +26,19 @@ class _WarrantyScreenState extends State<WarrantyScreen> {
     DateTime purchaseDate = warranty?.purchaseDate ?? DateTime.now();
     String imagePath = warranty?.imagePath ?? '';
     final picker = ImagePicker();
+    const popularStores = ['Amazon', 'Best Buy', 'Apple', 'Costco', 'Home Depot', 'Target', 'Walmart'];
 
-    showModalBottomSheet(
+    final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) => Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
             left: 20,
             right: 20,
-            top: 20,
+            top: 16,
           ),
           child: SingleChildScrollView(
             child: Column(
@@ -65,37 +50,38 @@ class _WarrantyScreenState extends State<WarrantyScreen> {
                   children: [
                     Text(
                       isEdit ? 'Edit Receipt & Warranty' : 'Add Receipt & Warranty',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
                     ),
-                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(ctx).pop()),
+                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(ctx).pop(false)),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 TextField(
                   controller: nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Product / Item Name (e.g. 65" TV, Refrigerator)', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(labelText: 'Product / Item Name *', hintText: 'e.g. 65" TV, Laptop, Washer', border: OutlineInputBorder()),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: popularStores.map((s) {
+                    return ChoiceChip(
+                      label: Text(s, style: const TextStyle(fontSize: 11)),
+                      selected: storeCtrl.text.trim().toLowerCase() == s.toLowerCase(),
+                      onSelected: (_) => setModalState(() => storeCtrl.text = s),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(
                       child: TextField(
                         controller: storeCtrl,
-                        decoration: const InputDecoration(labelText: 'Store / Merchant (Best Buy, Apple, Costco)', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(labelText: 'Store / Merchant', border: OutlineInputBorder()),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: catCtrl,
-                        decoration: const InputDecoration(labelText: 'Category (Electronics, Appliances)', border: OutlineInputBorder()),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
+                    const SizedBox(width: 10),
                     Expanded(
                       child: TextField(
                         controller: priceCtrl,
@@ -103,65 +89,26 @@ class _WarrantyScreenState extends State<WarrantyScreen> {
                         decoration: const InputDecoration(labelText: 'Price Paid', prefixText: '\$ ', border: OutlineInputBorder()),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: monthsCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Warranty (Months)', border: OutlineInputBorder()),
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: serialCtrl,
-                        decoration: const InputDecoration(labelText: 'Serial Number', border: OutlineInputBorder()),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: receiptCtrl,
-                        decoration: const InputDecoration(labelText: 'Receipt / Order #', border: OutlineInputBorder()),
-                      ),
-                    ),
+                    const Text('Warranty: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 6),
+                    ...[12, 24, 36, 60].map((m) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          label: Text('${m ~/ 12} yr', style: const TextStyle(fontSize: 11)),
+                          selected: monthsCtrl.text == m.toString(),
+                          onSelected: (_) => setModalState(() => monthsCtrl.text = m.toString()),
+                        ),
+                      );
+                    }),
                   ],
                 ),
-                const SizedBox(height: 12),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.calendar_today_rounded, color: Colors.blue),
-                  title: Text('Purchase Date: ${DateFormat.yMMMd().format(purchaseDate)}'),
-                  trailing: TextButton(
-                    onPressed: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: purchaseDate,
-                        firstDate: DateTime(2015),
-                        lastDate: DateTime.now(),
-                      );
-                      if (picked != null) {
-                        setModalState(() => purchaseDate = picked);
-                      }
-                    },
-                    child: const Text('Change Date'),
-                  ),
-                ),
                 const SizedBox(height: 8),
-                TextField(
-                  controller: memberCtrl,
-                  decoration: const InputDecoration(labelText: 'Owner / Family Member', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: notesCtrl,
-                  decoration: const InputDecoration(labelText: 'Notes (Proof of purchase location, return info)', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -192,28 +139,56 @@ class _WarrantyScreenState extends State<WarrantyScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: kIsWeb
-                        ? Image.network(
-                            imagePath,
-                            height: 120,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => const Text('Receipt photo attached'),
-                          )
-                        : Image.file(
-                            File(imagePath),
-                            height: 120,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => const Text('Receipt photo attached'),
-                          ),
+                        ? Image.network(imagePath, height: 110, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, _, _) => const Text('Receipt photo attached'))
+                        : Image.file(File(imagePath), height: 110, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, _, _) => const Text('Receipt photo attached')),
                   ),
                 ],
-                const SizedBox(height: 20),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: const Text('Optional Serial #, Date & Notes', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  children: [
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(child: TextField(controller: serialCtrl, decoration: const InputDecoration(labelText: 'Serial Number', border: OutlineInputBorder()))),
+                        const SizedBox(width: 10),
+                        Expanded(child: TextField(controller: receiptCtrl, decoration: const InputDecoration(labelText: 'Order / Receipt #', border: OutlineInputBorder()))),
+                      ],
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.calendar_today_rounded, color: Colors.blue),
+                      title: Text('Purchased: ${DateFormat.yMMMd().format(purchaseDate)}'),
+                      trailing: TextButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: purchaseDate,
+                            firstDate: DateTime(2015),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) setModalState(() => purchaseDate = picked);
+                        },
+                        child: const Text('Change'),
+                      ),
+                    ),
+                    TextField(controller: catCtrl, decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder())),
+                    const SizedBox(height: 8),
+                    TextField(controller: memberCtrl, decoration: const InputDecoration(labelText: 'Family Member', border: OutlineInputBorder())),
+                    const SizedBox(height: 8),
+                    TextField(controller: notesCtrl, decoration: const InputDecoration(labelText: 'Notes', border: OutlineInputBorder())),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
                     icon: const Icon(Icons.receipt_long_rounded),
-                    label: Text(isEdit ? 'Save Changes' : 'Save Receipt & Warranty'),
+                    label: Text(isEdit ? 'Save Changes' : 'Save Receipt & Warranty', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     onPressed: () async {
                       if (nameCtrl.text.trim().isEmpty) return;
                       const uuid = Uuid();
@@ -221,13 +196,13 @@ class _WarrantyScreenState extends State<WarrantyScreen> {
                         id: warranty?.id ?? uuid.v4(),
                         itemName: nameCtrl.text.trim(),
                         category: catCtrl.text.trim(),
-                        storeMerchant: storeCtrl.text.trim(),
+                        storeMerchant: storeCtrl.text.trim().isEmpty ? 'Store' : storeCtrl.text.trim(),
                         purchaseDate: purchaseDate,
                         price: double.tryParse(priceCtrl.text) ?? 0.0,
                         warrantyPeriodMonths: int.tryParse(monthsCtrl.text) ?? 12,
                         serialNumber: serialCtrl.text.trim(),
                         receiptNumber: receiptCtrl.text.trim(),
-                        assignedMember: memberCtrl.text.trim(),
+                        assignedMember: memberCtrl.text.trim().isEmpty ? 'Entire Family' : memberCtrl.text.trim(),
                         notes: notesCtrl.text.trim(),
                         imagePath: imagePath,
                       );
@@ -238,10 +213,7 @@ class _WarrantyScreenState extends State<WarrantyScreen> {
                         await StorageService.instance.addWarranty(updated);
                       }
 
-                      if (mounted) {
-                        Navigator.of(ctx).pop();
-                        setState(() {});
-                      }
+                      if (ctx.mounted) Navigator.of(ctx).pop(true);
                     },
                   ),
                 ),
@@ -251,7 +223,25 @@ class _WarrantyScreenState extends State<WarrantyScreen> {
         ),
       ),
     );
+    return saved ?? false;
   }
+
+  @override
+  State<WarrantyScreen> createState() => _WarrantyScreenState();
+}
+
+class _WarrantyScreenState extends State<WarrantyScreen> {
+  final currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
+  String _searchQuery = '';
+
+  void _copy(String text, String label) {
+    if (text.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$label copied to clipboard!'), behavior: SnackBarBehavior.floating),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -342,7 +332,12 @@ class _WarrantyScreenState extends State<WarrantyScreen> {
                         const Icon(Icons.receipt_outlined, size: 64, color: Colors.grey),
                         const SizedBox(height: 8),
                         const Text('No receipts found.'),
-                        TextButton(onPressed: () => _showAddWarrantyDialog(), child: const Text('Add Product Receipt')),
+                        TextButton(
+                          onPressed: () async {
+                            if (await WarrantyScreen.showAddWarrantySheet(context)) setState(() {});
+                          },
+                          child: const Text('Add Product Receipt'),
+                        ),
                       ],
                     ),
                   )
@@ -468,7 +463,9 @@ class _WarrantyScreenState extends State<WarrantyScreen> {
                                   TextButton.icon(
                                     icon: const Icon(Icons.edit_outlined, size: 16),
                                     label: const Text('Edit'),
-                                    onPressed: () => _showAddWarrantyDialog(item),
+                                    onPressed: () async {
+                                      if (await WarrantyScreen.showAddWarrantySheet(context, item)) setState(() {});
+                                    },
                                   ),
                                   TextButton.icon(
                                     icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
@@ -492,7 +489,9 @@ class _WarrantyScreenState extends State<WarrantyScreen> {
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
         label: const Text('Add Receipt'),
-        onPressed: () => _showAddWarrantyDialog(),
+        onPressed: () async {
+          if (await WarrantyScreen.showAddWarrantySheet(context)) setState(() {});
+        },
       ),
     );
   }

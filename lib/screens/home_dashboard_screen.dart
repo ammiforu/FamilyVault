@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/storage_service.dart';
+import '../widgets/quick_add_menu.dart';
 import 'emergency_screen.dart';
 import 'profile_screen.dart';
 import 'spreadsheet_screen.dart';
@@ -60,11 +61,20 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     final alerts = storage.getUpcomingAlerts();
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          if (await QuickAddMenu.show(context)) {
+            setState(() {});
+          }
+        },
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Quick Add'),
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async => setState(() {}),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
             children: [
               // TOP GREETING + PROFILE SWITCHER
               Row(

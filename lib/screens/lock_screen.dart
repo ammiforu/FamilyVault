@@ -53,6 +53,31 @@ class _LockScreenState extends State<LockScreen> {
           await StorageService.instance.setupMasterPin(_enteredPin);
           await StorageService.instance.loadVaultBundle();
           if (mounted) {
+            final startFresh = await showDialog<bool>(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Welcome to FamilyVault!'),
+                content: const Text(
+                  'Would you like to start with a clean empty vault for your real family data, or explore with pre-loaded sample data first?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('Explore Sample Data'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: const Text('Start Clean (Empty)'),
+                  ),
+                ],
+              ),
+            );
+            if (startFresh == true) {
+              await StorageService.instance.clearAllDataAndStartFresh();
+            }
+          }
+          if (mounted) {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
             );

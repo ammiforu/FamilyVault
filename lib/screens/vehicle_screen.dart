@@ -8,6 +8,203 @@ import '../services/storage_service.dart';
 class VehicleScreen extends StatefulWidget {
   const VehicleScreen({super.key});
 
+  static Future<bool> showAddVehicleSheet(BuildContext context, [Vehicle? vehicle]) async {
+    final isEdit = vehicle != null;
+    final nickCtrl = TextEditingController(text: vehicle?.nickname ?? '');
+    final makeCtrl = TextEditingController(text: vehicle?.make ?? '');
+    final modelCtrl = TextEditingController(text: vehicle?.model ?? '');
+    final yearCtrl = TextEditingController(text: vehicle?.year.toString() ?? DateTime.now().year.toString());
+    final plateCtrl = TextEditingController(text: vehicle?.licensePlate ?? '');
+    final vinCtrl = TextEditingController(text: vehicle?.vin ?? '');
+    final mileageCtrl = TextEditingController(text: vehicle != null ? vehicle.currentMileage.toString() : '');
+    final oilMileageCtrl = TextEditingController(text: vehicle != null && vehicle.oilChangeDueMileage > 0 ? vehicle.oilChangeDueMileage.toString() : '');
+    final insuranceCompanyCtrl = TextEditingController(text: vehicle?.insuranceCompany ?? '');
+    final insurancePolicyCtrl = TextEditingController(text: vehicle?.insurancePolicyNumber ?? '');
+    final valueCtrl = TextEditingController(text: vehicle != null && vehicle.estimatedValue > 0 ? vehicle.estimatedValue.toStringAsFixed(0) : '');
+    final memberCtrl = TextEditingController(text: vehicle?.assignedMember ?? 'Entire Family');
+
+    DateTime? regExpiry = vehicle?.registrationExpiry;
+    const popularMakes = ['Toyota', 'Honda', 'Tesla', 'Ford', 'Hyundai', 'BMW', 'Mercedes', 'Kia'];
+
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            left: 20,
+            right: 20,
+            top: 16,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      isEdit ? 'Edit Vehicle' : 'Add Car / Vehicle',
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
+                    ),
+                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(ctx).pop(false)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: popularMakes.map((m) {
+                    return ChoiceChip(
+                      label: Text(m, style: const TextStyle(fontSize: 11)),
+                      selected: makeCtrl.text.trim().toLowerCase() == m.toLowerCase(),
+                      onSelected: (_) => setModalState(() => makeCtrl.text = m),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: TextField(
+                        controller: yearCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: makeCtrl,
+                        decoration: const InputDecoration(labelText: 'Make *', border: OutlineInputBorder()),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: modelCtrl,
+                        decoration: const InputDecoration(labelText: 'Model', border: OutlineInputBorder()),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: nickCtrl,
+                  decoration: const InputDecoration(labelText: 'Nickname (auto-named if blank)', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 10),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: const Text('Optional Mileage, Plate, VIN & Insurance', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  children: [
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(child: TextField(controller: plateCtrl, decoration: const InputDecoration(labelText: 'License Plate', border: OutlineInputBorder()))),
+                        const SizedBox(width: 10),
+                        Expanded(child: TextField(controller: vinCtrl, decoration: const InputDecoration(labelText: 'VIN Number', border: OutlineInputBorder()))),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(child: TextField(controller: mileageCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Current Mileage', border: OutlineInputBorder()))),
+                        const SizedBox(width: 10),
+                        Expanded(child: TextField(controller: oilMileageCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Next Oil Change (Mi)', border: OutlineInputBorder()))),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(child: TextField(controller: valueCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Est. Value', prefixText: '\$ ', border: OutlineInputBorder()))),
+                        const SizedBox(width: 10),
+                        Expanded(child: TextField(controller: memberCtrl, decoration: const InputDecoration(labelText: 'Driver', border: OutlineInputBorder()))),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(child: TextField(controller: insuranceCompanyCtrl, decoration: const InputDecoration(labelText: 'Insurance Co.', border: OutlineInputBorder()))),
+                        const SizedBox(width: 10),
+                        Expanded(child: TextField(controller: insurancePolicyCtrl, decoration: const InputDecoration(labelText: 'Policy #', border: OutlineInputBorder()))),
+                      ],
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.event, color: Colors.blue),
+                      title: Text(regExpiry != null ? 'Reg. Expiry: ${DateFormat.yMMMd().format(regExpiry!)}' : 'Set Registration Expiry'),
+                      trailing: TextButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: regExpiry ?? DateTime.now().add(const Duration(days: 180)),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2035),
+                          );
+                          if (picked != null) setModalState(() => regExpiry = picked);
+                        },
+                        child: const Text('Pick Date'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    icon: const Icon(Icons.directions_car_rounded),
+                    label: Text(isEdit ? 'Save Vehicle' : 'Add Vehicle', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    onPressed: () async {
+                      if (makeCtrl.text.trim().isEmpty) return;
+                      const uuid = Uuid();
+                      final updated = Vehicle(
+                        id: vehicle?.id ?? uuid.v4(),
+                        nickname: nickCtrl.text.trim().isEmpty ? '${yearCtrl.text} ${makeCtrl.text} ${modelCtrl.text}'.trim() : nickCtrl.text.trim(),
+                        make: makeCtrl.text.trim(),
+                        model: modelCtrl.text.trim(),
+                        year: int.tryParse(yearCtrl.text) ?? DateTime.now().year,
+                        licensePlate: plateCtrl.text.trim(),
+                        vin: vinCtrl.text.trim(),
+                        currentMileage: int.tryParse(mileageCtrl.text) ?? 0,
+                        oilChangeDueMileage: int.tryParse(oilMileageCtrl.text) ?? 0,
+                        registrationExpiry: regExpiry,
+                        insuranceCompany: insuranceCompanyCtrl.text.trim(),
+                        insurancePolicyNumber: insurancePolicyCtrl.text.trim(),
+                        assignedMember: memberCtrl.text.trim().isEmpty ? 'Entire Family' : memberCtrl.text.trim(),
+                        estimatedValue: double.tryParse(valueCtrl.text) ?? 0.0,
+                        logs: vehicle?.logs,
+                      );
+
+                      if (isEdit) {
+                        await StorageService.instance.updateVehicle(updated);
+                      } else {
+                        await StorageService.instance.addVehicle(updated);
+                      }
+
+                      if (ctx.mounted) Navigator.of(ctx).pop(true);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    return saved ?? false;
+  }
+
   @override
   State<VehicleScreen> createState() => _VehicleScreenState();
 }
@@ -26,231 +223,6 @@ class _VehicleScreenState extends State<VehicleScreen> {
     );
   }
 
-  void _showAddVehicleDialog([Vehicle? vehicle]) {
-    final isEdit = vehicle != null;
-    final nickCtrl = TextEditingController(text: vehicle?.nickname ?? '');
-    final makeCtrl = TextEditingController(text: vehicle?.make ?? '');
-    final modelCtrl = TextEditingController(text: vehicle?.model ?? '');
-    final yearCtrl = TextEditingController(text: vehicle?.year.toString() ?? DateTime.now().year.toString());
-    final plateCtrl = TextEditingController(text: vehicle?.licensePlate ?? '');
-    final vinCtrl = TextEditingController(text: vehicle?.vin ?? '');
-    final mileageCtrl = TextEditingController(text: vehicle != null ? vehicle.currentMileage.toString() : '');
-    final oilMileageCtrl = TextEditingController(text: vehicle != null && vehicle.oilChangeDueMileage > 0 ? vehicle.oilChangeDueMileage.toString() : '');
-    final insuranceCompanyCtrl = TextEditingController(text: vehicle?.insuranceCompany ?? '');
-    final insurancePolicyCtrl = TextEditingController(text: vehicle?.insurancePolicyNumber ?? '');
-    final valueCtrl = TextEditingController(text: vehicle != null ? vehicle.estimatedValue.toStringAsFixed(0) : '');
-    final memberCtrl = TextEditingController(text: vehicle?.assignedMember ?? 'Entire Family');
-
-    DateTime? regExpiry = vehicle?.registrationExpiry;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            left: 20,
-            right: 20,
-            top: 20,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      isEdit ? 'Edit Vehicle' : 'Add Vehicle / Car',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(ctx).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: nickCtrl,
-                  decoration: const InputDecoration(labelText: 'Nickname (e.g. Family SUV, Dad\'s EV)', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 1,
-                      child: TextField(
-                        controller: yearCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: makeCtrl,
-                        decoration: const InputDecoration(labelText: 'Make (Toyota, Tesla, Ford)', border: OutlineInputBorder()),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: modelCtrl,
-                        decoration: const InputDecoration(labelText: 'Model (Civic, Y, F-150)', border: OutlineInputBorder()),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: plateCtrl,
-                        decoration: const InputDecoration(labelText: 'License Plate', border: OutlineInputBorder()),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: vinCtrl,
-                        decoration: const InputDecoration(labelText: 'VIN Number', border: OutlineInputBorder()),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: mileageCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Current Mileage', border: OutlineInputBorder()),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: oilMileageCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Next Oil Change (Mi)', border: OutlineInputBorder()),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: valueCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Est. Market Value', prefixText: '\$ ', border: OutlineInputBorder()),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: memberCtrl,
-                        decoration: const InputDecoration(labelText: 'Driver / Family Member', border: OutlineInputBorder()),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: insuranceCompanyCtrl,
-                        decoration: const InputDecoration(labelText: 'Insurance Co. (e.g. GEICO, State Farm)', border: OutlineInputBorder()),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: insurancePolicyCtrl,
-                        decoration: const InputDecoration(labelText: 'Policy Number', border: OutlineInputBorder()),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.event, color: Colors.blue),
-                  title: Text(regExpiry != null
-                      ? 'Registration Expiry: ${DateFormat.yMMMd().format(regExpiry!)}'
-                      : 'Set Registration Expiry Date'),
-                  trailing: TextButton(
-                    onPressed: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: regExpiry ?? DateTime.now().add(const Duration(days: 180)),
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2035),
-                      );
-                      if (picked != null) {
-                        setModalState(() => regExpiry = picked);
-                      }
-                    },
-                    child: const Text('Pick Date'),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    icon: const Icon(Icons.directions_car_rounded),
-                    label: Text(isEdit ? 'Save Vehicle' : 'Add Vehicle to Fleet'),
-                    onPressed: () async {
-                      if (makeCtrl.text.trim().isEmpty) return;
-                      const uuid = Uuid();
-                      final updated = Vehicle(
-                        id: vehicle?.id ?? uuid.v4(),
-                        nickname: nickCtrl.text.trim().isEmpty ? '${makeCtrl.text} ${modelCtrl.text}' : nickCtrl.text.trim(),
-                        make: makeCtrl.text.trim(),
-                        model: modelCtrl.text.trim(),
-                        year: int.tryParse(yearCtrl.text) ?? DateTime.now().year,
-                        licensePlate: plateCtrl.text.trim(),
-                        vin: vinCtrl.text.trim(),
-                        currentMileage: int.tryParse(mileageCtrl.text) ?? 0,
-                        oilChangeDueMileage: int.tryParse(oilMileageCtrl.text) ?? 0,
-                        registrationExpiry: regExpiry,
-                        insuranceCompany: insuranceCompanyCtrl.text.trim(),
-                        insurancePolicyNumber: insurancePolicyCtrl.text.trim(),
-                        assignedMember: memberCtrl.text.trim(),
-                        estimatedValue: double.tryParse(valueCtrl.text) ?? 0.0,
-                        logs: vehicle?.logs,
-                      );
-
-                      if (isEdit) {
-                        await StorageService.instance.updateVehicle(updated);
-                      } else {
-                        await StorageService.instance.addVehicle(updated);
-                      }
-
-                      if (mounted) {
-                        Navigator.of(ctx).pop();
-                        setState(() {});
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   void _showAddServiceLogDialog(Vehicle vehicle) {
     final typeCtrl = TextEditingController(text: 'Synthetic Oil & Filter Change');
@@ -345,7 +317,9 @@ class _VehicleScreenState extends State<VehicleScreen> {
               FilledButton.icon(
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Add Vehicle'),
-                onPressed: () => _showAddVehicleDialog(),
+                onPressed: () async {
+                  if (await VehicleScreen.showAddVehicleSheet(context)) setState(() {});
+                },
               ),
             ],
           ),
@@ -361,7 +335,12 @@ class _VehicleScreenState extends State<VehicleScreen> {
                       const Icon(Icons.no_crash_outlined, size: 48, color: Colors.grey),
                       const SizedBox(height: 8),
                       const Text('No vehicles added yet.'),
-                      TextButton(onPressed: () => _showAddVehicleDialog(), child: const Text('Add Family Car')),
+                      TextButton(
+                        onPressed: () async {
+                          if (await VehicleScreen.showAddVehicleSheet(context)) setState(() {});
+                        },
+                        child: const Text('Add Family Car'),
+                      ),
                     ],
                   ),
                 ),
@@ -412,7 +391,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
                           PopupMenuButton<String>(
                             onSelected: (action) async {
                               if (action == 'edit') {
-                                _showAddVehicleDialog(v);
+                                if (await VehicleScreen.showAddVehicleSheet(context, v)) setState(() {});
                               } else if (action == 'delete') {
                                 await StorageService.instance.deleteVehicle(v.id);
                                 setState(() {});

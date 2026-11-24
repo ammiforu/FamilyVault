@@ -8,6 +8,276 @@ import '../services/storage_service.dart';
 class WealthScreen extends StatefulWidget {
   const WealthScreen({super.key});
 
+  static const List<String> _popularBanks = [
+    'Chase',
+    'Bank of America',
+    'Wells Fargo',
+    'Fidelity',
+    'Vanguard',
+    'Capital One',
+    'Citi',
+    'Charles Schwab',
+    'Amex',
+    'HDFC Bank',
+    'ICICI Bank',
+    'SBI',
+  ];
+
+  static const List<String> _currencies = ['USD', 'EUR', 'GBP', 'INR', 'CAD', 'AUD'];
+
+  static Future<bool> showAddAccountSheet(BuildContext context, [WealthAccount? account]) async {
+    final isEdit = account != null;
+    final instCtrl = TextEditingController(text: account?.institution ?? '');
+    final nameCtrl = TextEditingController(text: account?.accountName ?? '');
+    final numberCtrl = TextEditingController(text: account?.maskedNumber ?? '');
+    final balanceCtrl = TextEditingController(
+      text: account != null ? account.balance.toStringAsFixed(2) : '',
+    );
+    final notesCtrl = TextEditingController(text: account?.notes ?? '');
+    final memberCtrl = TextEditingController(text: account?.assignedMember ?? 'Entire Family');
+
+    var selectedType = account?.accountType ?? AccountType.checking;
+    var selectedCurrency = account?.currency ?? 'USD';
+
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final theme = Theme.of(ctx);
+          final members = StorageService.instance.members.map((m) => m.name).toList();
+          final memberOptions = ['Entire Family', ...members.where((m) => m != 'Entire Family')];
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              left: 20,
+              right: 20,
+              top: 14,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        isEdit ? 'Edit Bank / Account' : 'Add Bank or Account',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 1-TAP POPULAR BANK PICKER
+                  const Text('1. Tap your Bank / Institution (or type below)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: _popularBanks.map((bank) {
+                      final isSelected = instCtrl.text.trim().toLowerCase() == bank.toLowerCase();
+                      return ChoiceChip(
+                        label: Text(bank, style: const TextStyle(fontSize: 12)),
+                        selected: isSelected,
+                        onSelected: (_) => setModalState(() => instCtrl.text = bank),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: instCtrl,
+                    onChanged: (_) => setModalState(() {}),
+                    decoration: const InputDecoration(
+                      labelText: 'Bank / Institution Name *',
+                      hintText: 'e.g. Chase, Fidelity, Local Credit Union',
+                      prefixIcon: Icon(Icons.account_balance_rounded),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 1-TAP ACCOUNT TYPE CHIPS
+                  const Text('2. Account Type', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: AccountType.values.map((t) {
+                      final isSelected = selectedType == t;
+                      return ChoiceChip(
+                        label: Text(t.displayName, style: const TextStyle(fontSize: 12)),
+                        selected: isSelected,
+                        selectedColor: t.isLiability ? Colors.red.withAlpha(60) : Colors.green.withAlpha(60),
+                        onSelected: (_) => setModalState(() => selectedType = t),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // BALANCE + CURRENCY
+                  const Text('3. Current Balance', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: TextField(
+                          controller: balanceCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          decoration: InputDecoration(
+                            labelText: selectedType.isLiability ? 'Amount Owed' : 'Current Balance',
+                            hintText: '0.00',
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 1,
+                        child: DropdownButtonFormField<String>(
+                          value: _currencies.contains(selectedCurrency) ? selectedCurrency : 'USD',
+                          decoration: const InputDecoration(
+                            labelText: 'Currency',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: _currencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                          onChanged: (val) {
+                            if (val != null) setModalState(() => selectedCurrency = val);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // OPTIONAL EXTRA DETAILS (COLLAPSED BY DEFAULT FOR CLEAN UX)
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: const Text('Optional Details (Nickname, Last 4, Member)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    children: [
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: nameCtrl,
+                        decoration: InputDecoration(
+                          labelText: 'Account Nickname (auto-named if blank)',
+                          hintText: '${instCtrl.text.isEmpty ? "Bank" : instCtrl.text} ${selectedType.displayName}',
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: numberCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Last 4 Digits (Optional)',
+                          hintText: '•••• 1234',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Wrap(
+                          spacing: 6,
+                          children: memberOptions.map((m) {
+                            return ChoiceChip(
+                              label: Text(m, style: const TextStyle(fontSize: 11)),
+                              selected: memberCtrl.text == m,
+                              onSelected: (_) => setModalState(() => memberCtrl.text = m),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: notesCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Notes (APY %, routing note, purpose)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      icon: const Icon(Icons.check_circle_rounded),
+                      label: Text(isEdit ? 'Save Changes' : 'Save Account', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      onPressed: () async {
+                        if (instCtrl.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(content: Text('Please tap or enter a bank name'), behavior: SnackBarBehavior.floating),
+                          );
+                          return;
+                        }
+                        final balance = double.tryParse(balanceCtrl.text.replaceAll(',', '')) ?? 0.0;
+                        const uuid = Uuid();
+                        final autoName = nameCtrl.text.trim().isEmpty
+                            ? '${instCtrl.text.trim()} ${selectedType.displayName}'
+                            : nameCtrl.text.trim();
+
+                        final newAcc = WealthAccount(
+                          id: account?.id ?? uuid.v4(),
+                          institution: instCtrl.text.trim(),
+                          accountType: selectedType,
+                          accountName: autoName,
+                          maskedNumber: numberCtrl.text.trim(),
+                          balance: balance,
+                          currency: selectedCurrency,
+                          assignedMember: memberCtrl.text.trim().isEmpty ? 'Entire Family' : memberCtrl.text.trim(),
+                          notes: notesCtrl.text.trim(),
+                        );
+
+                        if (isEdit) {
+                          await StorageService.instance.updateWealthAccount(newAcc);
+                        } else {
+                          await StorageService.instance.addWealthAccount(newAcc);
+                        }
+
+                        if (ctx.mounted) {
+                          Navigator.of(ctx).pop(true);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    return saved ?? false;
+  }
+
   @override
   State<WealthScreen> createState() => _WealthScreenState();
 }
@@ -32,171 +302,6 @@ class _WealthScreenState extends State<WealthScreen> {
     }
   }
 
-  void _showAddAccountDialog([WealthAccount? account]) {
-    final isEdit = account != null;
-    final instCtrl = TextEditingController(text: account?.institution ?? '');
-    final nameCtrl = TextEditingController(text: account?.accountName ?? '');
-    final numberCtrl = TextEditingController(text: account?.maskedNumber ?? '');
-    final balanceCtrl = TextEditingController(
-        text: account != null ? account.balance.toStringAsFixed(2) : '');
-    final notesCtrl = TextEditingController(text: account?.notes ?? '');
-    final memberCtrl = TextEditingController(text: account?.assignedMember ?? 'Entire Family');
-
-    var selectedType = account?.accountType ?? AccountType.checking;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            left: 20,
-            right: 20,
-            top: 20,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      isEdit ? 'Edit Account' : 'Add Financial Account',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(ctx).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<AccountType>(
-                  value: selectedType,
-                  decoration: const InputDecoration(
-                    labelText: 'Account Type',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: AccountType.values.map((t) {
-                    return DropdownMenuItem(
-                      value: t,
-                      child: Text(t.displayName),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    if (val != null) setModalState(() => selectedType = val);
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: instCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Bank / Institution (e.g. Chase, Fidelity, Vanguard)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Account Nickname (e.g. Joint Checking, Emergency Fund)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: balanceCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(
-                          labelText: selectedType.isLiability ? 'Current Debt / Balance' : 'Current Balance',
-                          prefixText: '\$ ',
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 1,
-                      child: TextField(
-                        controller: numberCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Last 4 Digits',
-                          hintText: '•••• 1234',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: memberCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Assigned Member (e.g. Dad & Mom, Emma)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: notesCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes (Interest rate, APY, account purpose)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    icon: const Icon(Icons.save),
-                    label: Text(isEdit ? 'Save Changes' : 'Add to Family Wealth'),
-                    onPressed: () async {
-                      final balance = double.tryParse(balanceCtrl.text) ?? 0.0;
-                      if (instCtrl.text.trim().isEmpty) return;
-
-                      const uuid = Uuid();
-                      final newAcc = WealthAccount(
-                        id: account?.id ?? uuid.v4(),
-                        institution: instCtrl.text.trim(),
-                        accountType: selectedType,
-                        accountName: nameCtrl.text.trim().isEmpty ? selectedType.displayName : nameCtrl.text.trim(),
-                        maskedNumber: numberCtrl.text.trim(),
-                        balance: balance,
-                        assignedMember: memberCtrl.text.trim(),
-                        notes: notesCtrl.text.trim(),
-                      );
-
-                      if (isEdit) {
-                        await StorageService.instance.updateWealthAccount(newAcc);
-                      } else {
-                        await StorageService.instance.addWealthAccount(newAcc);
-                      }
-
-                      if (mounted) {
-                        Navigator.of(ctx).pop();
-                        setState(() {});
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -212,7 +317,7 @@ class _WealthScreenState extends State<WealthScreen> {
           children: [
             Icon(Icons.account_balance_wallet_rounded, color: Colors.green, size: 24),
             SizedBox(width: 8),
-            Text('Family Wealth & Net Worth'),
+            Text('Family Wealth & Banks'),
           ],
         ),
         actions: [
@@ -224,15 +329,14 @@ class _WealthScreenState extends State<WealthScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.sync_rounded),
-            tooltip: 'Sync Financial Rates',
+            tooltip: 'Sync Live Currency Rates',
             onPressed: _isSyncing ? null : _refreshSyncRates,
           ),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
         children: [
-          // NET WORTH HERO CARD
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -245,46 +349,20 @@ class _WealthScreenState extends State<WealthScreen> {
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(20),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'TOTAL FAMILY NET WORTH',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                        color: theme.colorScheme.onPrimaryContainer.withAlpha(180),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withAlpha(30),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.trending_up_rounded, color: Colors.green, size: 16),
-                          SizedBox(width: 4),
-                          Text('All Portfolios', style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                  ],
+                Text(
+                  'TOTAL FAMILY NET WORTH (USD)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                    color: theme.colorScheme.onPrimaryContainer.withAlpha(180),
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   currencyFormat.format(netWorth),
                   style: theme.textTheme.headlineMedium?.copyWith(
@@ -292,48 +370,26 @@ class _WealthScreenState extends State<WealthScreen> {
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Divider(height: 1),
                 const SizedBox(height: 14),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
-                            children: [
-                              Icon(Icons.arrow_upward_rounded, size: 14, color: Colors.green),
-                              SizedBox(width: 4),
-                              Text('Total Assets', style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            currencyFormat.format(totalAssets),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
+                          const Text('Assets', style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600)),
+                          Text(currencyFormat.format(totalAssets), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         ],
                       ),
                     ),
-                    Container(width: 1, height: 32, color: theme.colorScheme.outlineVariant),
-                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
-                            children: [
-                              Icon(Icons.arrow_downward_rounded, size: 14, color: Colors.red),
-                              SizedBox(width: 4),
-                              Text('Total Debts', style: TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            currencyFormat.format(totalLiabilities),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
+                          const Text('Debts', style: TextStyle(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.w600)),
+                          Text(currencyFormat.format(totalLiabilities), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         ],
                       ),
                     ),
@@ -342,17 +398,15 @@ class _WealthScreenState extends State<WealthScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          // WEALTH BREAKDOWN OVERVIEW
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Asset Allocation Breakdown', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  const Text('Asset Allocation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                   const SizedBox(height: 12),
                   _buildAssetProgressBar(
                     realEstate: storage.properties.fold(0.0, (s, p) => s + p.estimatedMarketValue),
@@ -365,24 +419,22 @@ class _WealthScreenState extends State<WealthScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          // ACCOUNTS LIST
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Financial Accounts (${accounts.length})',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              TextButton.icon(
+              Text('Accounts (${accounts.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              FilledButton.icon(
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add Bank / Fund'),
-                onPressed: () => _showAddAccountDialog(),
+                label: const Text('Add Bank'),
+                onPressed: () async {
+                  if (await WealthScreen.showAddAccountSheet(context)) setState(() {});
+                },
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
           if (accounts.isEmpty)
             Card(
@@ -393,10 +445,13 @@ class _WealthScreenState extends State<WealthScreen> {
                     children: [
                       const Icon(Icons.account_balance_outlined, size: 48, color: Colors.grey),
                       const SizedBox(height: 8),
-                      const Text('No accounts added yet.'),
-                      TextButton(
-                        onPressed: () => _showAddAccountDialog(),
-                        child: const Text('Add First Account'),
+                      const Text('No bank accounts added yet.'),
+                      const SizedBox(height: 8),
+                      FilledButton.tonal(
+                        onPressed: () async {
+                          if (await WealthScreen.showAddAccountSheet(context)) setState(() {});
+                        },
+                        child: const Text('Add Your First Bank'),
                       ),
                     ],
                   ),
@@ -408,12 +463,6 @@ class _WealthScreenState extends State<WealthScreen> {
               final isDebt = acc.isLiability;
               return Card(
                 margin: const EdgeInsets.only(bottom: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: isDebt ? Colors.red.withAlpha(40) : Colors.green.withAlpha(40),
-                  ),
-                ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   leading: Container(
@@ -424,59 +473,32 @@ class _WealthScreenState extends State<WealthScreen> {
                     ),
                     child: Icon(
                       isDebt ? Icons.credit_card_rounded : Icons.account_balance_rounded,
-                      color: isDebt ? Colors.red : Colors.green,
+                      color: isDebt ? Colors.redAccent : Colors.green,
                     ),
                   ),
-                  title: Text(
-                    acc.institution,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${acc.accountName} ${acc.maskedNumber}'),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              acc.assignedMember,
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          if (acc.notes.isNotEmpty) ...[
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                acc.notes,
-                                style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
+                  title: Text(acc.institution, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  subtitle: Text('${acc.accountName} ${acc.maskedNumber} • ${acc.assignedMember}', style: const TextStyle(fontSize: 12)),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        '${isDebt ? "-" : ""}${currencyFormat.format(acc.balance)}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: isDebt ? Colors.red : Colors.green,
-                        ),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${isDebt ? "-" : ""}${acc.currency} ${acc.balance.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: isDebt ? Colors.redAccent : Colors.green,
+                            ),
+                          ),
+                        ],
                       ),
                       PopupMenuButton<String>(
                         onSelected: (action) async {
                           if (action == 'edit') {
-                            _showAddAccountDialog(acc);
+                            if (await WealthScreen.showAddAccountSheet(context, acc)) setState(() {});
                           } else if (action == 'delete') {
                             await storage.deleteWealthAccount(acc.id);
                             setState(() {});
