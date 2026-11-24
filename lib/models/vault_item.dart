@@ -2,6 +2,7 @@ enum VaultCategory {
   login,
   card,
   document,
+  legal,
   emergency,
   wifi,
   note;
@@ -13,11 +14,13 @@ enum VaultCategory {
       case VaultCategory.card:
         return 'Banking & Cards';
       case VaultCategory.document:
-        return 'IDs & Documents';
+        return 'Passports, Visas & IDs';
+      case VaultCategory.legal:
+        return 'Wills & Legal Documents';
       case VaultCategory.emergency:
         return 'Emergency (ICE)';
       case VaultCategory.wifi:
-        return 'Wi-Fi & Home';
+        return 'Wi-Fi & Home Codes';
       case VaultCategory.note:
         return 'Secure Notes';
     }
@@ -30,7 +33,9 @@ enum VaultCategory {
       case VaultCategory.card:
         return 'CARD';
       case VaultCategory.document:
-        return 'DOC';
+        return 'DOC/ID';
+      case VaultCategory.legal:
+        return 'LEGAL';
       case VaultCategory.emergency:
         return 'ICE';
       case VaultCategory.wifi:

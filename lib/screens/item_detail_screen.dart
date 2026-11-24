@@ -322,6 +322,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         return 'Cardholder Name / Card #';
       case VaultCategory.document:
         return 'Document ID / Number';
+      case VaultCategory.legal:
+        return 'Trustee / Executor / Authority';
       case VaultCategory.emergency:
         return 'Primary Contact / Phone';
       case VaultCategory.wifi:
@@ -339,6 +341,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         return 'CVV / Card PIN';
       case VaultCategory.document:
         return 'Issuing Authority / Group #';
+      case VaultCategory.legal:
+        return 'Registration / Document Code';
       case VaultCategory.emergency:
         return 'Secondary Contact / Cell';
       case VaultCategory.wifi:
@@ -356,6 +360,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         return 'Bank Online Portal';
       case VaultCategory.document:
         return 'Portal or File Link';
+      case VaultCategory.legal:
+        return 'Law Firm / Safe Location';
       case VaultCategory.emergency:
         return 'Address / Hospital Location';
       case VaultCategory.wifi:

@@ -47,6 +47,8 @@ class _VaultScreenState extends State<VaultScreen> {
         return Icons.credit_card_rounded;
       case VaultCategory.document:
         return Icons.badge_outlined;
+      case VaultCategory.legal:
+        return Icons.gavel_rounded;
       case VaultCategory.emergency:
         return Icons.medical_services_outlined;
       case VaultCategory.wifi:
@@ -64,6 +66,8 @@ class _VaultScreenState extends State<VaultScreen> {
         return Colors.teal;
       case VaultCategory.document:
         return Colors.deepPurple;
+      case VaultCategory.legal:
+        return Colors.brown;
       case VaultCategory.emergency:
         return Colors.red;
       case VaultCategory.wifi:

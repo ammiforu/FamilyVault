@@ -51,7 +51,7 @@ class _LockScreenState extends State<LockScreen> {
       } else {
         if (_enteredPin == _firstEnteredPin) {
           await StorageService.instance.setupMasterPin(_enteredPin);
-          await StorageService.instance.loadVaultItems();
+          await StorageService.instance.loadVaultBundle();
           if (mounted) {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
@@ -70,7 +70,7 @@ class _LockScreenState extends State<LockScreen> {
       // Unlock existing vault
       final isValid = await StorageService.instance.verifyMasterPin(_enteredPin);
       if (isValid) {
-        await StorageService.instance.loadVaultItems();
+        await StorageService.instance.loadVaultBundle();
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
