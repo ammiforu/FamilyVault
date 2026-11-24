@@ -486,7 +486,7 @@ class _WealthScreenState extends State<WealthScreen> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '${isDebt ? "-" : ""}${acc.currency} ${acc.balance.toStringAsFixed(0)}',
+                            '${isDebt ? "-" : ""}${acc.currency == 'USD' ? '\$' : '${acc.currency} '}${NumberFormat.decimalPattern().format(acc.balance.round())}',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 15,

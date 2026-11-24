@@ -21,6 +21,7 @@ class HomeDashboardScreen extends StatefulWidget {
 
 class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   final currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+  bool _hideNetWorth = false;
 
   Future<void> _confirmClearSampleData() async {
     final confirmed = await showDialog<bool>(
@@ -64,22 +65,13 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     final alerts = storage.getUpcomingAlerts();
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          if (await QuickAddMenu.show(context)) {
-            setState(() {});
-          }
-        },
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Quick Add'),
-      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async => setState(() {}),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
-              // TOP GREETING + PROFILE SWITCHER
+              // TOP GREETING + PROFILE SWITCHER + QUICK ADD PILL
               Row(
                 children: [
                   Container(
@@ -92,24 +84,39 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     ),
                     child: const Icon(Icons.shield_rounded, color: Colors.white, size: 22),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'FamilyVault OS',
-                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: 19),
                         ),
                         Text(
                           'Active: ${activeMember?.name ?? "My Family"}',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    onPressed: () async {
+                      if (await QuickAddMenu.show(context)) {
+                        setState(() {});
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 6),
                   InkWell(
                     borderRadius: BorderRadius.circular(24),
                     onTap: () async {
@@ -119,25 +126,19 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                       setState(() {});
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
                         color: theme.colorScheme.surfaceContainerHighest.withAlpha(120),
-                        borderRadius: BorderRadius.circular(24),
+                        shape: BoxShape.circle,
                         border: Border.all(color: Colors.white.withAlpha(20)),
                       ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 12,
-                            backgroundColor: Color(activeMember?.colorValue ?? 0xFF6366F1),
-                            child: Text(
-                              (activeMember?.name.isNotEmpty ?? false) ? activeMember!.name[0] : 'F',
-                              style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Text('Switch', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                        ],
+                      child: CircleAvatar(
+                        radius: 14,
+                        backgroundColor: Color(activeMember?.colorValue ?? 0xFF6366F1),
+                        child: Text(
+                          (activeMember?.name.isNotEmpty ?? false) ? activeMember!.name[0] : 'F',
+                          style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                   ),
@@ -212,25 +213,46 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                               letterSpacing: 1.4,
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(35),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.lock_rounded, color: Colors.white, size: 12),
-                                SizedBox(width: 4),
-                                Text('Local Encrypted', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
-                              ],
-                            ),
+                          Row(
+                            children: [
+                              InkWell(
+                                borderRadius: BorderRadius.circular(20),
+                                onTap: () => setState(() => _hideNetWorth = !_hideNetWorth),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withAlpha(35),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Icon(
+                                    _hideNetWorth ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withAlpha(35),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.lock_rounded, color: Colors.white, size: 12),
+                                    SizedBox(width: 4),
+                                    Text('Encrypted', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        currencyFormat.format(storage.netWorth),
+                        _hideNetWorth ? '••••••••' : currencyFormat.format(storage.netWorth),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 34,
@@ -244,7 +266,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                           Expanded(
                             child: _heroMetric(
                               'Total Assets',
-                              currencyFormat.format(storage.totalAssets),
+                              _hideNetWorth ? '••••••' : currencyFormat.format(storage.totalAssets),
                               Icons.arrow_upward_rounded,
                               const Color(0xFF6EE7B7),
                             ),
@@ -254,7 +276,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                           Expanded(
                             child: _heroMetric(
                               'Total Debts',
-                              currencyFormat.format(storage.totalLiabilities),
+                              _hideNetWorth ? '••••••' : currencyFormat.format(storage.totalLiabilities),
                               Icons.arrow_downward_rounded,
                               const Color(0xFFFCA5A5),
                             ),

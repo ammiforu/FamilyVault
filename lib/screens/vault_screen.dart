@@ -125,6 +125,25 @@ class _VaultScreenState extends State<VaultScreen> {
             tooltip: 'Filter favorites',
             onPressed: () => setState(() => _onlyFavorites = !_onlyFavorites),
           ),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: FilledButton.tonalIcon(
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                visualDensity: VisualDensity.compact,
+              ),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Add'),
+              onPressed: () async {
+                final res = await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ItemDetailScreen(initialCategory: _selectedCategory),
+                  ),
+                );
+                if (res == true) setState(() {});
+              },
+            ),
+          ),
         ],
       ),
       body: Column(
@@ -203,7 +222,7 @@ class _VaultScreenState extends State<VaultScreen> {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                     itemCount: items.length,
                     itemBuilder: (context, index) {
                       final item = items[index];
@@ -370,18 +389,6 @@ class _VaultScreenState extends State<VaultScreen> {
                   ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final res = await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => ItemDetailScreen(initialCategory: _selectedCategory),
-            ),
-          );
-          if (res == true) setState(() {});
-        },
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Item'),
       ),
     );
   }

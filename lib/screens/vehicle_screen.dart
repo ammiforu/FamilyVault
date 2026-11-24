@@ -587,8 +587,8 @@ class _VehicleScreenState extends State<VehicleScreen> {
                               Expanded(
                                 child: Text(
                                   daysLeftReg < 0
-                                      ? '🚨 Registration EXPIRED ${daysLeftReg.abs()} days ago!'
-                                      : '⚠️ Vehicle registration expires in $daysLeftReg days!',
+                                      ? 'Registration EXPIRED ${daysLeftReg.abs()} days ago!'
+                                      : 'Vehicle registration expires in $daysLeftReg days!',
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                 ),
                               ),
@@ -645,7 +645,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
                                 Row(
                                   children: [
                                     const Text('Mileage: ', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                    Text('${v.currentMileage} mi', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    Text('${NumberFormat.decimalPattern().format(v.currentMileage)} mi', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                   ],
                                 ),
                               ],
