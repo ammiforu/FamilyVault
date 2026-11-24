@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
 class AddressSuggestion {
@@ -17,13 +18,43 @@ class ApiService {
   static final ApiService instance = ApiService._internal();
   ApiService._internal();
 
-  /// Search real addresses using OpenStreetMap Nominatim (free, no API key),
-  /// with automatic fallback to Komoot Photon API.
+  /// Search real addresses using ArcGIS World Geocoder (free, full residential
+  /// house-number coverage + CORS enabled), with fallback to Photon & OpenStreetMap Nominatim.
   Future<List<AddressSuggestion>> searchAddresses(String query) async {
     final trimmed = query.trim();
     if (trimmed.length < 3) return [];
 
-    // Try Photon first (fast, no strict User-Agent throttling, great autocomplete)
+    // 1. ArcGIS World Geocoding Service (best for exact residential home addresses)
+    try {
+      final uri = Uri.parse(
+        'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates'
+        '?SingleLine=${Uri.encodeComponent(trimmed)}&f=json&maxLocations=6',
+      );
+      final resp = await http.get(uri).timeout(const Duration(seconds: 6));
+      if (resp.statusCode == 200) {
+        final data = json.decode(resp.body) as Map<String, dynamic>;
+        final candidates = data['candidates'] as List<dynamic>? ?? [];
+        final results = <AddressSuggestion>[];
+        for (final c in candidates) {
+          final addr = c['address'] as String? ?? '';
+          final loc = c['location'] as Map<String, dynamic>?;
+          if (addr.isNotEmpty && loc != null) {
+            final lat = (loc['y'] as num?)?.toDouble();
+            final lng = (loc['x'] as num?)?.toDouble();
+            if (lat != null && lng != null) {
+              results.add(AddressSuggestion(
+                displayName: addr,
+                latitude: lat,
+                longitude: lng,
+              ));
+            }
+          }
+        }
+        if (results.isNotEmpty) return results;
+      }
+    } catch (_) {}
+
+    // 2. Fallback: Komoot Photon (OpenStreetMap-based)
     try {
       final uri = Uri.parse(
         'https://photon.komoot.io/api/?q=${Uri.encodeComponent(trimmed)}&limit=6',
@@ -64,14 +95,17 @@ class ApiService {
       }
     } catch (_) {}
 
-    // Fallback to OpenStreetMap Nominatim
+    // 3. Fallback: OpenStreetMap Nominatim (never set User-Agent on Web due to browser CORS restrictions)
     try {
       final uri = Uri.parse(
         'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(trimmed)}&format=json&addressdetails=1&limit=6',
       );
-      final resp = await http.get(uri, headers: {
-        'User-Agent': 'FamilyVaultApp/1.0 (local-first-family-vault)',
-      }).timeout(const Duration(seconds: 6));
+      final resp = await http
+          .get(
+            uri,
+            headers: kIsWeb ? null : {'User-Agent': 'FamilyVaultApp/1.0 (local-first-family-vault)'},
+          )
+          .timeout(const Duration(seconds: 6));
 
       if (resp.statusCode == 200) {
         final List<dynamic> list = json.decode(resp.body) as List<dynamic>;
@@ -92,11 +126,28 @@ class ApiService {
   Future<String> reverseGeocode(double lat, double lng) async {
     try {
       final uri = Uri.parse(
+        'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode'
+        '?location=$lng,$lat&f=json',
+      );
+      final resp = await http.get(uri).timeout(const Duration(seconds: 6));
+      if (resp.statusCode == 200) {
+        final data = json.decode(resp.body) as Map<String, dynamic>;
+        final addr = data['address'] as Map<String, dynamic>?;
+        final matchAddr = addr?['Match_addr'] as String? ?? addr?['LongLabel'] as String?;
+        if (matchAddr != null && matchAddr.isNotEmpty) return matchAddr;
+      }
+    } catch (_) {}
+
+    try {
+      final uri = Uri.parse(
         'https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lng&format=json',
       );
-      final resp = await http.get(uri, headers: {
-        'User-Agent': 'FamilyVaultApp/1.0 (local-first-family-vault)',
-      }).timeout(const Duration(seconds: 6));
+      final resp = await http
+          .get(
+            uri,
+            headers: kIsWeb ? null : {'User-Agent': 'FamilyVaultApp/1.0 (local-first-family-vault)'},
+          )
+          .timeout(const Duration(seconds: 6));
 
       if (resp.statusCode == 200) {
         final data = json.decode(resp.body) as Map<String, dynamic>;
