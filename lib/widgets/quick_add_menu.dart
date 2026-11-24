@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/vault_item.dart';
+import '../screens/bills_screen.dart';
+import '../screens/insurance_screen.dart';
 import '../screens/item_detail_screen.dart';
 import '../screens/property_screen.dart';
 import '../screens/vehicle_screen.dart';
@@ -54,10 +56,12 @@ class QuickAddMenu {
                   children: [
                     _tile(ctx, 'bank', 'Bank / Wealth', 'Checking, 401k, Card', Icons.account_balance_rounded, const Color(0xFF10B981)),
                     _tile(ctx, 'property', 'Address / Home', 'Pin on map, Equity', Icons.pin_drop_rounded, const Color(0xFF8B5CF6)),
+                    _tile(ctx, 'insurance', 'Life / LIC / Claim', 'Policy, Agent, Nominee', Icons.health_and_safety_rounded, const Color(0xFF6366F1)),
                     _tile(ctx, 'vehicle', 'Car / Vehicle', 'Oil, Reg, Insurance', Icons.directions_car_rounded, const Color(0xFFF59E0B)),
                     _tile(ctx, 'warranty', 'Receipt / Warranty', 'Scan & track expiry', Icons.receipt_long_rounded, const Color(0xFF14B8A6)),
+                    _tile(ctx, 'bill', 'Recurring Bill', 'Monthly/Annual bills', Icons.repeat_rounded, const Color(0xFFEC4899)),
                     _tile(ctx, 'document', 'Passport / Will', 'IDs, Visas, Legal', Icons.badge_rounded, const Color(0xFF3B82F6)),
-                    _tile(ctx, 'login', 'Login / Wi-Fi', 'Passwords & codes', Icons.lock_rounded, const Color(0xFF6366F1)),
+                    _tile(ctx, 'login', 'Login / Wi-Fi', 'Passwords & codes', Icons.lock_rounded, const Color(0xFF0EA5E9)),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -93,6 +97,10 @@ class QuickAddMenu {
         return await VehicleScreen.showAddVehicleSheet(context);
       case 'warranty':
         return await WarrantyScreen.showAddWarrantySheet(context);
+      case 'insurance':
+        return await InsuranceScreen.showAddPolicySheet(context);
+      case 'bill':
+        return await BillsScreen.showAddBillSheet(context);
       case 'document':
         return await Navigator.of(context).push<bool>(
               MaterialPageRoute(builder: (_) => const ItemDetailScreen(initialCategory: VaultCategory.document)),

@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/storage_service.dart';
 import '../widgets/quick_add_menu.dart';
-import 'emergency_screen.dart';
+import 'bills_screen.dart';
+import 'expiry_timeline_screen.dart';
+import 'insurance_screen.dart';
+import 'maintenance_screen.dart';
 import 'profile_screen.dart';
 import 'spreadsheet_screen.dart';
 import 'warranty_screen.dart';
@@ -276,18 +279,21 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 childAspectRatio: 1.05,
                 children: [
                   _quickTile('Map & Homes', Icons.map_rounded, const Color(0xFF8B5CF6), () => widget.onNavigateTab(4)),
+                  _quickTile('Life / LIC', Icons.health_and_safety_rounded, const Color(0xFF6366F1), () async {
+                    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InsuranceScreen()));
+                    setState(() {});
+                  }),
                   _quickTile('Vehicles', Icons.directions_car_rounded, const Color(0xFFF59E0B), () => widget.onNavigateTab(3)),
                   _quickTile('Receipts', Icons.receipt_long_rounded, const Color(0xFF14B8A6), () async {
                     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WarrantyScreen()));
                     setState(() {});
                   }),
-                  _quickTile('Sheets Sync', Icons.table_chart_rounded, const Color(0xFF22C55E), () async {
-                    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SpreadsheetScreen()));
+                  _quickTile('Bills & Subs', Icons.repeat_rounded, const Color(0xFFEC4899), () async {
+                    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BillsScreen()));
                     setState(() {});
                   }),
-                  _quickTile('Bank / Wealth', Icons.account_balance_rounded, const Color(0xFF3B82F6), () => widget.onNavigateTab(2)),
-                  _quickTile('Emergency ICE', Icons.medical_services_rounded, const Color(0xFFEF4444), () async {
-                    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EmergencyScreen()));
+                  _quickTile('Sheets Sync', Icons.table_chart_rounded, const Color(0xFF22C55E), () async {
+                    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SpreadsheetScreen()));
                     setState(() {});
                   }),
                 ],
@@ -299,8 +305,10 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Upcoming Alerts (${alerts.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  if (alerts.isNotEmpty)
-                    const Text('Tap to view', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ExpiryTimelineScreen())),
+                    child: const Text('Full Timeline →', style: TextStyle(fontSize: 12)),
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
@@ -341,6 +349,10 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                       onTap: () {
                         if (a.tabIndex == 5) {
                           Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WarrantyScreen()));
+                        } else if (a.tabIndex == 6) {
+                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InsuranceScreen()));
+                        } else if (a.tabIndex == 7) {
+                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MaintenanceScreen()));
                         } else {
                           widget.onNavigateTab(a.tabIndex);
                         }

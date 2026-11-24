@@ -5,7 +5,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/family_member.dart';
+import '../models/health_record.dart';
+import '../models/home_maintenance_task.dart';
+import '../models/insurance_policy.dart';
 import '../models/property_asset.dart';
+import '../models/recurring_bill.dart';
 import '../models/vault_item.dart';
 import '../models/vehicle.dart';
 import '../models/warranty_receipt.dart';
@@ -27,6 +31,10 @@ class StorageService {
   List<PropertyAsset> _properties = [];
   List<WarrantyReceipt> _warranties = [];
   List<FamilyMember> _members = [];
+  List<InsurancePolicy> _policies = [];
+  List<RecurringBill> _bills = [];
+  List<HealthRecord> _healthRecords = [];
+  List<HomeMaintenanceTask> _maintenanceTasks = [];
   String _activeMemberId = '';
   bool _isSampleData = true;
   Map<String, double> _exchangeRates = {'USD': 1.0};
@@ -39,6 +47,10 @@ class StorageService {
   List<PropertyAsset> get properties => List.unmodifiable(_properties);
   List<WarrantyReceipt> get warranties => List.unmodifiable(_warranties);
   List<FamilyMember> get members => List.unmodifiable(_members);
+  List<InsurancePolicy> get policies => List.unmodifiable(_policies);
+  List<RecurringBill> get bills => List.unmodifiable(_bills);
+  List<HealthRecord> get healthRecords => List.unmodifiable(_healthRecords);
+  List<HomeMaintenanceTask> get maintenanceTasks => List.unmodifiable(_maintenanceTasks);
   String get activeMemberId => _activeMemberId;
   bool get isSampleData => _isSampleData;
   Map<String, double> get exchangeRates => _exchangeRates;
@@ -62,6 +74,10 @@ class StorageService {
     _vehicles = [];
     _properties = [];
     _warranties = [];
+    _policies = [];
+    _bills = [];
+    _healthRecords = [];
+    _maintenanceTasks = [];
     _members = [
       FamilyMember(
         id: 'member_primary',
@@ -130,7 +146,113 @@ class StorageService {
       }
     }
 
+    for (final pol in _policies) {
+      final days = pol.daysUntilNextPremium;
+      if (days != null && days <= 30) {
+        alerts.add((
+          title: '${pol.provider}: ${pol.policyName}',
+          subtitle: days < 0 ? 'Premium overdue by ${days.abs()} days' : 'Premium due in $days days',
+          isUrgent: days <= 7,
+          tabIndex: 6,
+        ));
+      }
+    }
+
+    for (final task in _maintenanceTasks) {
+      if (task.daysUntilDue <= 14) {
+        alerts.add((
+          title: 'Home: ${task.taskName}',
+          subtitle: task.isDue ? 'Overdue by ${task.daysUntilDue.abs()} days' : 'Due in ${task.daysUntilDue} days',
+          isUrgent: task.isDue,
+          tabIndex: 7,
+        ));
+      }
+    }
+
     return alerts;
+  }
+
+  /// Unified Expiry Timeline across Passports/Docs, Vehicles, Insurance, Warranties & Maintenance.
+  List<({String title, String category, String subtitle, DateTime date, int daysLeft})> getUnifiedExpiries() {
+    final list = <({String title, String category, String subtitle, DateTime date, int daysLeft})>[];
+    final now = DateTime.now();
+
+    for (final v in _vehicles) {
+      if (v.registrationExpiry != null) {
+        list.add((
+          title: '${v.nickname} Registration',
+          category: 'Vehicle',
+          subtitle: 'Plate ${v.licensePlate}',
+          date: v.registrationExpiry!,
+          daysLeft: v.registrationExpiry!.difference(now).inDays,
+        ));
+      }
+      if (v.insuranceExpiry != null) {
+        list.add((
+          title: '${v.nickname} Auto Insurance',
+          category: 'Vehicle',
+          subtitle: v.insuranceCompany,
+          date: v.insuranceExpiry!,
+          daysLeft: v.insuranceExpiry!.difference(now).inDays,
+        ));
+      }
+    }
+
+    for (final w in _warranties) {
+      list.add((
+        title: '${w.itemName} Warranty',
+        category: 'Warranty',
+        subtitle: w.storeMerchant,
+        date: w.warrantyExpiryDate,
+        daysLeft: w.daysUntilWarrantyExpires,
+      ));
+    }
+
+    for (final pol in _policies) {
+      if (pol.nextPremiumDueDate != null) {
+        list.add((
+          title: '${pol.policyName} Premium',
+          category: 'Insurance/LIC',
+          subtitle: '${pol.provider} (${pol.policyNumber})',
+          date: pol.nextPremiumDueDate!,
+          daysLeft: pol.nextPremiumDueDate!.difference(now).inDays,
+        ));
+      }
+      if (pol.maturityOrExpiryDate != null) {
+        list.add((
+          title: '${pol.policyName} Maturity/Expiry',
+          category: 'Insurance/LIC',
+          subtitle: pol.provider,
+          date: pol.maturityOrExpiryDate!,
+          daysLeft: pol.maturityOrExpiryDate!.difference(now).inDays,
+        ));
+      }
+    }
+
+    for (final p in _properties) {
+      if (p.propertyTaxDueDate != null) {
+        list.add((
+          title: '${p.title} Property Tax',
+          category: 'Property',
+          subtitle: p.fullAddress,
+          date: p.propertyTaxDueDate!,
+          daysLeft: p.propertyTaxDueDate!.difference(now).inDays,
+        ));
+      }
+    }
+
+    for (final t in _maintenanceTasks) {
+      list.add((
+        title: t.taskName,
+        category: 'Home Care',
+        subtitle: t.area,
+        date: t.nextDueDate,
+        daysLeft: t.daysUntilDue,
+      ));
+    }
+
+    list.sort((a, b) => a.daysLeft.compareTo(b.daysLeft));
+    return list;
   }
 
   FamilyMember? get activeMember {
@@ -271,6 +393,22 @@ class StorageService {
               ?.map((e) => FamilyMember.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [];
+      _policies = (data['policies'] as List<dynamic>?)
+              ?.map((e) => InsurancePolicy.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [];
+      _bills = (data['bills'] as List<dynamic>?)
+              ?.map((e) => RecurringBill.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [];
+      _healthRecords = (data['healthRecords'] as List<dynamic>?)
+              ?.map((e) => HealthRecord.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [];
+      _maintenanceTasks = (data['maintenanceTasks'] as List<dynamic>?)
+              ?.map((e) => HomeMaintenanceTask.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [];
 
       _activeMemberId = data['activeMemberId'] as String? ?? (_members.isNotEmpty ? _members.first.id : '');
       _isSampleData = data['isSampleData'] as bool? ?? false;
@@ -298,6 +436,10 @@ class StorageService {
         'properties': _properties.map((e) => e.toJson()).toList(),
         'warranties': _warranties.map((e) => e.toJson()).toList(),
         'members': _members.map((e) => e.toJson()).toList(),
+        'policies': _policies.map((e) => e.toJson()).toList(),
+        'bills': _bills.map((e) => e.toJson()).toList(),
+        'healthRecords': _healthRecords.map((e) => e.toJson()).toList(),
+        'maintenanceTasks': _maintenanceTasks.map((e) => e.toJson()).toList(),
       };
 
       final jsonString = json.encode(bundleMap);
@@ -428,6 +570,90 @@ class StorageService {
     if (_activeMemberId == id) {
       _activeMemberId = _members.first.id;
     }
+    await saveVaultBundle();
+  }
+
+  // INSURANCE / LIC / CLAIMS CRUD
+  Future<void> addPolicy(InsurancePolicy policy) async {
+    _policies.insert(0, policy);
+    await saveVaultBundle();
+  }
+
+  Future<void> updatePolicy(InsurancePolicy policy) async {
+    final idx = _policies.indexWhere((p) => p.id == policy.id);
+    if (idx != -1) {
+      _policies[idx] = policy;
+      await saveVaultBundle();
+    }
+  }
+
+  Future<void> deletePolicy(String id) async {
+    _policies.removeWhere((p) => p.id == id);
+    await saveVaultBundle();
+  }
+
+  // RECURRING BILLS CRUD
+  Future<void> addBill(RecurringBill bill) async {
+    _bills.insert(0, bill);
+    await saveVaultBundle();
+  }
+
+  Future<void> updateBill(RecurringBill bill) async {
+    final idx = _bills.indexWhere((b) => b.id == bill.id);
+    if (idx != -1) {
+      _bills[idx] = bill;
+      await saveVaultBundle();
+    }
+  }
+
+  Future<void> deleteBill(String id) async {
+    _bills.removeWhere((b) => b.id == id);
+    await saveVaultBundle();
+  }
+
+  // HEALTH RECORDS CRUD
+  Future<void> addHealthRecord(HealthRecord record) async {
+    _healthRecords.insert(0, record);
+    await saveVaultBundle();
+  }
+
+  Future<void> updateHealthRecord(HealthRecord record) async {
+    final idx = _healthRecords.indexWhere((r) => r.id == record.id);
+    if (idx != -1) {
+      _healthRecords[idx] = record;
+      await saveVaultBundle();
+    }
+  }
+
+  Future<void> deleteHealthRecord(String id) async {
+    _healthRecords.removeWhere((r) => r.id == id);
+    await saveVaultBundle();
+  }
+
+  // HOME MAINTENANCE CRUD
+  Future<void> addMaintenanceTask(HomeMaintenanceTask task) async {
+    _maintenanceTasks.insert(0, task);
+    await saveVaultBundle();
+  }
+
+  Future<void> updateMaintenanceTask(HomeMaintenanceTask task) async {
+    final idx = _maintenanceTasks.indexWhere((t) => t.id == task.id);
+    if (idx != -1) {
+      _maintenanceTasks[idx] = task;
+      await saveVaultBundle();
+    }
+  }
+
+  Future<void> markMaintenanceDone(String id) async {
+    final idx = _maintenanceTasks.indexWhere((t) => t.id == id);
+    if (idx != -1) {
+      _maintenanceTasks[idx].lastCompletedDate = DateTime.now();
+      await saveVaultBundle();
+    }
+  }
+
+  Future<void> deleteMaintenanceTask(String id) async {
+    _maintenanceTasks.removeWhere((t) => t.id == id);
     await saveVaultBundle();
   }
 
@@ -583,6 +809,10 @@ class StorageService {
       'vehicles': _vehicles.map((e) => e.toJson()).toList(),
       'properties': _properties.map((e) => e.toJson()).toList(),
       'warranties': _warranties.map((e) => e.toJson()).toList(),
+      'policies': _policies.map((e) => e.toJson()).toList(),
+      'bills': _bills.map((e) => e.toJson()).toList(),
+      'healthRecords': _healthRecords.map((e) => e.toJson()).toList(),
+      'maintenanceTasks': _maintenanceTasks.map((e) => e.toJson()).toList(),
       'items': _items.map((e) => e.toJson()).toList(),
     };
     return const JsonEncoder.withIndent('  ').convert(bundleMap);
@@ -621,6 +851,26 @@ class StorageService {
       if (data.containsKey('members')) {
         _members = (data['members'] as List<dynamic>)
             .map((e) => FamilyMember.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      if (data.containsKey('policies')) {
+        _policies = (data['policies'] as List<dynamic>)
+            .map((e) => InsurancePolicy.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      if (data.containsKey('bills')) {
+        _bills = (data['bills'] as List<dynamic>)
+            .map((e) => RecurringBill.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      if (data.containsKey('healthRecords')) {
+        _healthRecords = (data['healthRecords'] as List<dynamic>)
+            .map((e) => HealthRecord.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      if (data.containsKey('maintenanceTasks')) {
+        _maintenanceTasks = (data['maintenanceTasks'] as List<dynamic>)
+            .map((e) => HomeMaintenanceTask.fromJson(e as Map<String, dynamic>))
             .toList();
       }
 
@@ -890,6 +1140,99 @@ class StorageService {
         assignedMember: 'Kids',
         notes: 'Blood Type: O+ | Allergy Alert: Penicillin & Peanuts',
         isFavorite: true,
+      ),
+    ];
+
+    // 7. Insurance, LIC, Agent & Claims
+    _policies = [
+      InsurancePolicy(
+        id: uuid.v4(),
+        type: InsuranceType.lifeLic,
+        provider: 'LIC of India',
+        policyName: 'Jeevan Anand Endowment Plan',
+        policyNumber: 'LIC-884029174',
+        insuredMember: 'Robert (Dad)',
+        nomineeName: 'Sarah (Mom) - 100%',
+        coverageAmount: 250000,
+        premiumAmount: 1450,
+        premiumFrequency: 'Annual',
+        nextPremiumDueDate: DateTime.now().add(const Duration(days: 19)),
+        maturityOrExpiryDate: DateTime(2042, 6, 15),
+        agentName: 'Rajesh Sharma (Senior Advisor)',
+        agentPhone: '+1 (555) 890-4412',
+        agentEmail: 'r.sharma.lic@advisor.com',
+        agentCode: 'LIC-AGT-4920',
+        claimStatus: 'Active Policy',
+        notes: 'Original policy bond kept in safe deposit box #214. Bonus accrued yearly.',
+      ),
+      InsurancePolicy(
+        id: uuid.v4(),
+        type: InsuranceType.health,
+        provider: 'BlueCross BlueShield',
+        policyName: 'Family PPO Gold Health Plan',
+        policyNumber: 'BCBS-49201844',
+        insuredMember: 'Entire Family',
+        nomineeName: 'Sarah (Mom)',
+        coverageAmount: 1000000,
+        premiumAmount: 620,
+        premiumFrequency: 'Monthly',
+        nextPremiumDueDate: DateTime.now().add(const Duration(days: 12)),
+        maturityOrExpiryDate: DateTime(2026, 12, 31),
+        agentName: 'Elena Brooks',
+        agentPhone: '+1 (555) 340-1122',
+        claimStatus: 'Claim Filed',
+        claimReferenceNumber: 'CLM-2026-9931',
+        notes: 'Dental & Vision rider included. Deductible \$1,500.',
+      ),
+    ];
+
+    // 8. Recurring Bills & Subscriptions
+    _bills = [
+      RecurringBill(id: uuid.v4(), name: 'Home Mortgage (Chase)', category: 'Housing', amount: 2450, frequency: 'Monthly', dueDayOfMonth: 1, isAutoPay: true),
+      RecurringBill(id: uuid.v4(), name: 'Fiber Gigabit Internet', category: 'Utilities', amount: 79.99, frequency: 'Monthly', dueDayOfMonth: 15, isAutoPay: true),
+      RecurringBill(id: uuid.v4(), name: 'Electricity & Gas', category: 'Utilities', amount: 185.00, frequency: 'Monthly', dueDayOfMonth: 22, isAutoPay: false),
+      RecurringBill(id: uuid.v4(), name: 'Netflix 4K Ultra HD', category: 'Subscriptions', amount: 22.99, frequency: 'Monthly', dueDayOfMonth: 8, isAutoPay: true),
+    ];
+
+    // 9. Family Health & Immunization Records
+    _healthRecords = [
+      HealthRecord(
+        id: uuid.v4(),
+        memberName: 'Robert (Dad)',
+        bloodGroup: 'O+',
+        allergies: 'None',
+        medications: 'Vitamin D3 2000IU',
+        primaryDoctor: 'Dr. Alan Grant',
+        doctorPhone: '+1 (555) 392-1084',
+        immunizations: 'Tetanus (2024), Flu Shot (Oct 2026)',
+      ),
+      HealthRecord(
+        id: uuid.v4(),
+        memberName: 'Emma (Daughter)',
+        bloodGroup: 'A+',
+        allergies: 'Penicillin, Peanuts',
+        medications: 'EpiPen Jr (carry in backpack)',
+        primaryDoctor: 'Dr. Miller (Pediatrician)',
+        doctorPhone: '+1 (555) 981-3420',
+        immunizations: 'MMR, DTaP, Varicella (Up to date)',
+      ),
+    ];
+
+    // 10. Home Maintenance Schedule
+    _maintenanceTasks = [
+      HomeMaintenanceTask(
+        id: uuid.v4(),
+        taskName: 'Replace HVAC Air Filters (MERV 11)',
+        area: 'HVAC',
+        intervalMonths: 3,
+        lastCompletedDate: DateTime.now().subtract(const Duration(days: 85)),
+      ),
+      HomeMaintenanceTask(
+        id: uuid.v4(),
+        taskName: 'Test Smoke & CO2 Detector Batteries',
+        area: 'Safety',
+        intervalMonths: 6,
+        lastCompletedDate: DateTime.now().subtract(const Duration(days: 120)),
       ),
     ];
 

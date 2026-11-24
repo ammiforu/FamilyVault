@@ -5,6 +5,11 @@ import 'wealth_screen.dart';
 import 'vehicle_screen.dart';
 import 'property_screen.dart';
 import 'warranty_screen.dart';
+import 'insurance_screen.dart';
+import 'bills_screen.dart';
+import 'health_screen.dart';
+import 'maintenance_screen.dart';
+import 'expiry_timeline_screen.dart';
 import 'spreadsheet_screen.dart';
 import 'profile_screen.dart';
 import 'backup_screen.dart';
@@ -92,6 +97,41 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final theme = Theme.of(context);
 
     final hubItems = [
+      _HubItem(
+        title: 'Insurance, LIC & Claims',
+        subtitle: 'Life/LIC bonds, nominees, agent contacts & claim docs',
+        icon: Icons.health_and_safety_rounded,
+        color: Colors.indigoAccent,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InsuranceScreen())),
+      ),
+      _HubItem(
+        title: 'Recurring Bills & Subs',
+        subtitle: 'Monthly burn rate, due dates & auto-pay tracker',
+        icon: Icons.repeat_rounded,
+        color: Colors.pinkAccent,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BillsScreen())),
+      ),
+      _HubItem(
+        title: 'Family Health & Vaccines',
+        subtitle: 'Blood groups, allergies, medications & doctor contacts',
+        icon: Icons.favorite_rounded,
+        color: Colors.redAccent,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HealthScreen())),
+      ),
+      _HubItem(
+        title: 'Home Care Schedule',
+        subtitle: 'HVAC filters, smoke alarms & seasonal maintenance',
+        icon: Icons.handyman_rounded,
+        color: Colors.amber,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MaintenanceScreen())),
+      ),
+      _HubItem(
+        title: 'Unified Expiry Timeline',
+        subtitle: 'All upcoming renewals & expirations sorted soonest',
+        icon: Icons.hourglass_bottom_rounded,
+        color: Colors.deepOrangeAccent,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ExpiryTimelineScreen())),
+      ),
       _HubItem(
         title: 'Receipts & Warranties',
         subtitle: 'Attach receipt photos, track warranty expiries & serial #s',
