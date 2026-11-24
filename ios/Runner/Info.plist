@@ -7,7 +7,11 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Family Vault</string>
+	<string>FamilyVault</string>
+	<key>NSCameraUsageDescription</key>
+	<string>FamilyVault uses the camera to capture receipts, warranties, and vital documents locally on your device.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FamilyVault accesses your photo library to attach receipt and document images locally.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -14,6 +15,7 @@ import 'encryption_service.dart';
 class StorageService {
   static const String _keyPinHash = 'master_pin_hash';
   static const String _keyHasSetup = 'vault_is_setup';
+  static const String _keyWebBundle = 'family_vault_web_bundle_v2';
   static const String _vaultFileName = 'family_vault_bundle_v2.enc';
 
   static final StorageService instance = StorageService._internal();
@@ -26,6 +28,8 @@ class StorageService {
   List<WarrantyReceipt> _warranties = [];
   List<FamilyMember> _members = [];
   String _activeMemberId = '';
+  bool _isSampleData = true;
+  Map<String, double> _exchangeRates = {'USD': 1.0};
 
   String _currentSessionPin = '';
 
@@ -36,6 +40,98 @@ class StorageService {
   List<WarrantyReceipt> get warranties => List.unmodifiable(_warranties);
   List<FamilyMember> get members => List.unmodifiable(_members);
   String get activeMemberId => _activeMemberId;
+  bool get isSampleData => _isSampleData;
+  Map<String, double> get exchangeRates => _exchangeRates;
+
+  void updateExchangeRates(Map<String, double> rates) {
+    if (rates.isNotEmpty) {
+      _exchangeRates = rates;
+    }
+  }
+
+  double _toUsd(double amount, String currency) {
+    if (currency == 'USD') return amount;
+    final rate = _exchangeRates[currency];
+    if (rate == null || rate == 0) return amount;
+    return amount / rate;
+  }
+
+  Future<void> clearAllDataAndStartFresh() async {
+    _items = [];
+    _wealthAccounts = [];
+    _vehicles = [];
+    _properties = [];
+    _warranties = [];
+    _members = [
+      FamilyMember(
+        id: 'member_primary',
+        name: 'My Family',
+        role: 'Admin',
+        colorValue: 0xFF10B981,
+        isCurrentUser: true,
+      ),
+    ];
+    _activeMemberId = 'member_primary';
+    _isSampleData = false;
+    await saveVaultBundle();
+  }
+
+  Future<void> loadSampleData() async {
+    _isSampleData = true;
+    await _seedDefaultDemoData();
+  }
+
+  List<({String title, String subtitle, bool isUrgent, int tabIndex})> getUpcomingAlerts() {
+    final alerts = <({String title, String subtitle, bool isUrgent, int tabIndex})>[];
+
+    for (final v in _vehicles) {
+      if (v.isOilChangeDue) {
+        alerts.add((
+          title: '${v.nickname}: Oil Change Due',
+          subtitle: 'Current ${v.currentMileage} mi (due at ${v.oilChangeDueMileage} mi)',
+          isUrgent: true,
+          tabIndex: 3,
+        ));
+      }
+      final regDays = v.daysUntilRegistrationExpires;
+      if (regDays != null && regDays <= 45) {
+        alerts.add((
+          title: '${v.nickname}: Registration',
+          subtitle: regDays < 0 ? 'Expired ${regDays.abs()} days ago' : 'Expires in $regDays days',
+          isUrgent: regDays <= 14,
+          tabIndex: 3,
+        ));
+      }
+    }
+
+    for (final w in _warranties) {
+      final days = w.daysUntilWarrantyExpires;
+      if (days >= 0 && days <= 45) {
+        alerts.add((
+          title: '${w.itemName}: Warranty',
+          subtitle: 'Expires in $days days (${w.storeMerchant})',
+          isUrgent: days <= 14,
+          tabIndex: 5,
+        ));
+      }
+    }
+
+    for (final p in _properties) {
+      if (p.propertyTaxDueDate != null) {
+        final days = p.propertyTaxDueDate!.difference(DateTime.now()).inDays;
+        if (days <= 60) {
+          alerts.add((
+            title: '${p.title}: Property Tax',
+            subtitle: days < 0 ? 'Past due by ${days.abs()} days' : 'Due in $days days',
+            isUrgent: days <= 15,
+            tabIndex: 4,
+          ));
+        }
+      }
+    }
+
+    return alerts;
+  }
 
   FamilyMember? get activeMember {
     try {
@@ -94,7 +190,7 @@ class StorageService {
   double get totalAssets {
     double sum = 0.0;
     for (final a in _wealthAccounts) {
-      if (!a.isLiability) sum += a.balance;
+      if (!a.isLiability) sum += _toUsd(a.balance, a.currency);
     }
     for (final v in _vehicles) {
       sum += v.estimatedValue;
@@ -108,7 +204,7 @@ class StorageService {
   double get totalLiabilities {
     double sum = 0.0;
     for (final a in _wealthAccounts) {
-      if (a.isLiability) sum += a.balance;
+      if (a.isLiability) sum += _toUsd(a.balance, a.currency);
     }
     for (final p in _properties) {
       sum += p.mortgageRemaining;
@@ -125,13 +221,19 @@ class StorageService {
 
   Future<void> loadVaultBundle() async {
     try {
-      final file = await _getLocalBundleFile();
-      if (!await file.exists()) {
-        await _seedDefaultDemoData();
-        return;
+      String encryptedContent = '';
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        encryptedContent = prefs.getString(_keyWebBundle) ?? '';
+      } else {
+        final file = await _getLocalBundleFile();
+        if (!await file.exists()) {
+          await _seedDefaultDemoData();
+          return;
+        }
+        encryptedContent = await file.readAsString();
       }
 
-      final encryptedContent = await file.readAsString();
       if (encryptedContent.trim().isEmpty) {
         await _seedDefaultDemoData();
         return;
@@ -171,6 +273,7 @@ class StorageService {
           [];
 
       _activeMemberId = data['activeMemberId'] as String? ?? (_members.isNotEmpty ? _members.first.id : '');
+      _isSampleData = data['isSampleData'] as bool? ?? false;
 
       if (_members.isEmpty) {
         await _seedDefaultDemoData();
@@ -184,11 +287,11 @@ class StorageService {
 
   Future<void> saveVaultBundle() async {
     try {
-      final file = await _getLocalBundleFile();
       final bundleMap = {
         'version': 2,
         'updatedAt': DateTime.now().toIso8601String(),
         'activeMemberId': _activeMemberId,
+        'isSampleData': _isSampleData,
         'items': _items.map((e) => e.toJson()).toList(),
         'wealthAccounts': _wealthAccounts.map((e) => e.toJson()).toList(),
         'vehicles': _vehicles.map((e) => e.toJson()).toList(),
@@ -199,7 +302,13 @@ class StorageService {
 
       final jsonString = json.encode(bundleMap);
       final encryptedContent = EncryptionService.encryptPayload(jsonString, _currentSessionPin);
-      await file.writeAsString(encryptedContent, flush: true);
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_keyWebBundle, encryptedContent);
+      } else {
+        final file = await _getLocalBundleFile();
+        await file.writeAsString(encryptedContent, flush: true);
+      }
     } catch (_) {}
   }
 

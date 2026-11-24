@@ -22,7 +22,8 @@ class _FamilyVaultAppState extends State<FamilyVaultApp> {
 
   @override
   Widget build(BuildContext context) {
-    const seedColor = Color(0xFF1E88E5);
+    const primaryAccent = Color(0xFF6366F1); // Modern Indigo
+    const secondaryAccent = Color(0xFF10B981); // Emerald
 
     return MaterialApp(
       title: 'FamilyVault',
@@ -31,23 +32,52 @@ class _FamilyVaultAppState extends State<FamilyVaultApp> {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: seedColor,
+          seedColor: primaryAccent,
+          secondary: secondaryAccent,
           brightness: Brightness.light,
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: Colors.grey.shade200),
+          ),
         ),
         appBarTheme: const AppBarTheme(
           centerTitle: false,
           elevation: 0,
+          scrolledUnderElevation: 0,
+          backgroundColor: Colors.transparent,
         ),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: seedColor,
+          seedColor: primaryAccent,
+          secondary: secondaryAccent,
           brightness: Brightness.dark,
+          surface: const Color(0xFF0F172A),
+        ),
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          color: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: Colors.white.withAlpha(18)),
+          ),
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: const Color(0xFF1E293B),
+          indicatorColor: primaryAccent.withAlpha(50),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         ),
         appBarTheme: const AppBarTheme(
           centerTitle: false,
           elevation: 0,
+          scrolledUnderElevation: 0,
+          backgroundColor: Color(0xFF0F172A),
         ),
       ),
       home: LockScreen(isConfigured: widget.isConfigured),

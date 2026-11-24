@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/vault_item.dart';
+import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import 'item_detail_screen.dart';
 
@@ -106,67 +107,127 @@ class _SpreadsheetScreenState extends State<SpreadsheetScreen> {
 
   void _importCsvDialog() {
     final textController = TextEditingController();
+    final urlController = TextEditingController();
+    bool isFetching = false;
+    String statusError = '';
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.file_upload_outlined, color: Colors.blue),
-            SizedBox(width: 8),
-            Text('Import from Google Sheets'),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Row(
             children: [
-              const Text(
-                'Paste CSV rows exported or copied from Google Sheets / Excel below:',
-                style: TextStyle(fontSize: 13),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: textController,
-                maxLines: 7,
-                decoration: const InputDecoration(
-                  hintText: 'Paste CSV text here...\ne.g. Netflix,Accounts & Logins,Family,user@mail.com,pass123,...',
-                  border: OutlineInputBorder(),
-                  hintStyle: TextStyle(fontSize: 12),
-                ),
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-              ),
+              Icon(Icons.table_chart_rounded, color: Colors.green),
+              SizedBox(width: 8),
+              Expanded(child: Text('Import from Google Sheets')),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final content = textController.text.trim();
-              if (content.isEmpty) return;
-              final count = await StorageService.instance.importFromCsv(content);
-              if (ctx.mounted) {
-                Navigator.of(ctx).pop();
-              }
-              if (mounted) {
-                setState(() {});
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Successfully imported $count rows into vault!'),
-                    backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Option 1: Sync from a shared Google Sheets URL',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                   ),
-                );
-              }
-            },
-            child: const Text('Import Rows'),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: urlController,
+                          decoration: const InputDecoration(
+                            hintText: 'https://docs.google.com/spreadsheets/d/...',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      FilledButton.tonal(
+                        onPressed: isFetching
+                            ? null
+                            : () async {
+                                final url = urlController.text.trim();
+                                if (url.isEmpty) return;
+                                setDialogState(() {
+                                  isFetching = true;
+                                  statusError = '';
+                                });
+                                final res = await ApiService.instance.fetchGoogleSheetCsv(url);
+                                if (ctx.mounted) {
+                                  setDialogState(() {
+                                    isFetching = false;
+                                    if (res.success) {
+                                      textController.text = res.content;
+                                    } else {
+                                      statusError = res.error;
+                                    }
+                                  });
+                                }
+                              },
+                        child: isFetching
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Text('Fetch'),
+                      ),
+                    ],
+                  ),
+                  if (statusError.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(statusError, style: const TextStyle(color: Colors.redAccent, fontSize: 11)),
+                  ],
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Option 2: Paste CSV rows (auto-routes to Wealth, Vehicles, Properties, Warranties, Vault)',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: textController,
+                    maxLines: 6,
+                    decoration: const InputDecoration(
+                      hintText: 'Paste CSV text here or click Fetch above...',
+                      border: OutlineInputBorder(),
+                      hintStyle: TextStyle(fontSize: 12),
+                    ),
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final content = textController.text.trim();
+                if (content.isEmpty) return;
+                final count = await StorageService.instance.importFromCsv(content);
+                if (ctx.mounted) {
+                  Navigator.of(ctx).pop();
+                }
+                if (mounted) {
+                  setState(() {});
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('✓ Imported $count rows across your FamilyVault modules!'),
+                      backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Import Rows'),
+            ),
+          ],
+        ),
       ),
     );
   }

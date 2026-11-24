@@ -11,6 +11,7 @@ class WarrantyReceipt {
   String assignedMember;
   String notes;
   String returnPolicyDays;
+  String imagePath;
 
   WarrantyReceipt({
     required this.id,
@@ -25,6 +26,7 @@ class WarrantyReceipt {
     this.assignedMember = 'Entire Family',
     this.notes = '',
     this.returnPolicyDays = '30',
+    this.imagePath = '',
   });
 
   DateTime get warrantyExpiryDate {
@@ -54,6 +56,7 @@ class WarrantyReceipt {
     'assignedMember': assignedMember,
     'notes': notes,
     'returnPolicyDays': returnPolicyDays,
+    'imagePath': imagePath,
   };
 
   factory WarrantyReceipt.fromJson(Map<String, dynamic> json) => WarrantyReceipt(
@@ -71,5 +74,6 @@ class WarrantyReceipt {
     assignedMember: json['assignedMember'] as String? ?? 'Entire Family',
     notes: json['notes'] as String? ?? '',
     returnPolicyDays: json['returnPolicyDays'] as String? ?? '30',
+    imagePath: json['imagePath'] as String? ?? '',
   );
 }

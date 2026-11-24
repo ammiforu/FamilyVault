@@ -176,7 +176,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 20),
 
           // Backup & Data
-          Text('Spreadsheet & Backup', style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
+          Text('Data Management & Backup', style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
           const SizedBox(height: 8),
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -188,6 +188,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle: const Text('Copy full spreadsheet records to clipboard'),
                   trailing: const Icon(Icons.copy_rounded),
                   onTap: _exportJsonBackup,
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.cleaning_services_rounded, color: Colors.redAccent),
+                  title: const Text('Clear All Data & Start Fresh'),
+                  subtitle: const Text('Remove all sample/dummy items and start empty'),
+                  onTap: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Clear All Data?'),
+                        content: const Text('This will erase all current vault items, vehicles, properties, and accounts so you can start completely fresh.'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+                          FilledButton(
+                            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                            onPressed: () => Navigator.of(ctx).pop(true),
+                            child: const Text('Clear Everything'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      await StorageService.instance.clearAllDataAndStartFresh();
+                      if (mounted) {
+                        setState(() {});
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('✓ Vault cleared! Ready for your real family data.'), behavior: SnackBarBehavior.floating),
+                        );
+                      }
+                    }
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.auto_awesome_rounded, color: Colors.amber),
+                  title: const Text('Load Sample Family Data'),
+                  subtitle: const Text('Populate demo items to explore app features'),
+                  onTap: () async {
+                    await StorageService.instance.loadSampleData();
+                    if (mounted) {
+                      setState(() {});
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Sample data loaded!'), behavior: SnackBarBehavior.floating),
+                      );
+                    }
+                  },
                 ),
               ],
             ),

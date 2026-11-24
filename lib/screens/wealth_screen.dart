@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../models/wealth_account.dart';
+import '../services/api_service.dart';
 import '../services/storage_service.dart';
 
 class WealthScreen extends StatefulWidget {
@@ -17,13 +18,13 @@ class _WealthScreenState extends State<WealthScreen> {
 
   Future<void> _refreshSyncRates() async {
     setState(() => _isSyncing = true);
-    // Simulate real-time open market valuation check
-    await Future.delayed(const Duration(milliseconds: 900));
+    final rates = await ApiService.instance.fetchExchangeRates(base: 'USD');
+    StorageService.instance.updateExchangeRates(rates);
     if (mounted) {
       setState(() => _isSyncing = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✓ Financial balances & market rates up-to-date!'),
+        SnackBar(
+          content: Text('✓ Live FX rates synced (${rates.length} currencies)!'),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
         ),

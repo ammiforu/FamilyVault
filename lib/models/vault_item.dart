@@ -68,6 +68,7 @@ class VaultItem {
   String notes;
   String expiryDate;
   bool isFavorite;
+  String attachmentPath;
   DateTime createdAt;
   DateTime updatedAt;
 
@@ -82,6 +83,7 @@ class VaultItem {
     this.notes = '',
     this.expiryDate = '',
     this.isFavorite = false,
+    this.attachmentPath = '',
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : createdAt = createdAt ?? DateTime.now(),
@@ -99,6 +101,7 @@ class VaultItem {
       'notes': notes,
       'expiryDate': expiryDate,
       'isFavorite': isFavorite,
+      'attachmentPath': attachmentPath,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -116,6 +119,7 @@ class VaultItem {
       notes: json['notes'] as String? ?? '',
       expiryDate: json['expiryDate'] as String? ?? '',
       isFavorite: json['isFavorite'] as bool? ?? false,
+      attachmentPath: json['attachmentPath'] as String? ?? '',
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
           : DateTime.now(),
@@ -178,6 +182,7 @@ class VaultItem {
     String? notes,
     String? expiryDate,
     bool? isFavorite,
+    String? attachmentPath,
   }) {
     return VaultItem(
       id: id ?? this.id,
@@ -190,6 +195,7 @@ class VaultItem {
       notes: notes ?? this.notes,
       expiryDate: expiryDate ?? this.expiryDate,
       isFavorite: isFavorite ?? this.isFavorite,
+      attachmentPath: attachmentPath ?? this.attachmentPath,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );

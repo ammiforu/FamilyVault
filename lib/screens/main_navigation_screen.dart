@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'home_dashboard_screen.dart';
 import 'vault_screen.dart';
 import 'wealth_screen.dart';
 import 'vehicle_screen.dart';
@@ -18,7 +19,7 @@ class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({
     super.key,
     this.onThemeToggle,
-    this.isDarkMode = false,
+    this.isDarkMode = true,
   });
 
   @override
@@ -28,9 +29,14 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
 
+  void _navigateToTab(int index) {
+    setState(() => _currentIndex = index);
+  }
+
   @override
   Widget build(BuildContext context) {
     final screens = [
+      HomeDashboardScreen(onNavigateTab: _navigateToTab),
       const VaultScreen(),
       const WealthScreen(),
       const VehicleScreen(),
@@ -45,12 +51,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
-        onDestinationSelected: (index) => setState(() => _currentIndex = index),
+        onDestinationSelected: _navigateToTab,
         destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
           NavigationDestination(
             icon: Icon(Icons.shield_outlined),
             selectedIcon: Icon(Icons.shield_rounded),
-            label: 'Vault & IDs',
+            label: 'Vault',
           ),
           NavigationDestination(
             icon: Icon(Icons.account_balance_wallet_outlined),
@@ -63,14 +74,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             label: 'Vehicles',
           ),
           NavigationDestination(
-            icon: Icon(Icons.home_work_outlined),
-            selectedIcon: Icon(Icons.home_work_rounded),
-            label: 'Properties',
+            icon: Icon(Icons.map_outlined),
+            selectedIcon: Icon(Icons.map_rounded),
+            label: 'Map',
           ),
           NavigationDestination(
             icon: Icon(Icons.grid_view_outlined),
             selectedIcon: Icon(Icons.grid_view_rounded),
-            label: 'More Hub',
+            label: 'More',
           ),
         ],
       ),
@@ -83,14 +94,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final hubItems = [
       _HubItem(
         title: 'Receipts & Warranties',
-        subtitle: 'Track purchase dates, warranty expiries, and serial #s',
+        subtitle: 'Attach receipt photos, track warranty expiries & serial #s',
         icon: Icons.receipt_long_rounded,
         color: Colors.teal,
         onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WarrantyScreen())),
       ),
       _HubItem(
-        title: 'Spreadsheet Grid View',
-        subtitle: 'Google Sheets table view with instant CSV import/export',
+        title: 'Google Sheets & Grid View',
+        subtitle: 'Sync live Google Sheets URL or import/export CSV',
         icon: Icons.table_chart_rounded,
         color: Colors.green,
         onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SpreadsheetScreen())),
@@ -124,8 +135,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PasswordGeneratorScreen())),
       ),
       _HubItem(
-        title: 'Vault Security Settings',
-        subtitle: 'Change Master PIN, lock immediately, preferences',
+        title: 'Vault Security & Reset',
+        subtitle: 'Change Master PIN, clear sample data, lock immediately',
         icon: Icons.settings_rounded,
         color: Colors.blueGrey,
         onTap: () => Navigator.of(context).push(MaterialPageRoute(
@@ -143,7 +154,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           children: [
             Icon(Icons.dashboard_rounded, size: 24),
             SizedBox(width: 8),
-            Text('Family Life Tools & Hub'),
+            Text('Family Tools & Hub'),
           ],
         ),
       ),
@@ -151,17 +162,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Specialized Family Modules',
+            'All Family Modules',
             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           ...hubItems.map((item) {
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(80)),
-              ),
               child: ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 leading: Container(

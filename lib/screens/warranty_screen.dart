@@ -1,5 +1,8 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../models/warranty_receipt.dart';
@@ -37,6 +40,8 @@ class _WarrantyScreenState extends State<WarrantyScreen> {
     final notesCtrl = TextEditingController(text: warranty?.notes ?? '');
 
     DateTime purchaseDate = warranty?.purchaseDate ?? DateTime.now();
+    String imagePath = warranty?.imagePath ?? '';
+    final picker = ImagePicker();
 
     showModalBottomSheet(
       context: context,
@@ -156,6 +161,53 @@ class _WarrantyScreenState extends State<WarrantyScreen> {
                   controller: notesCtrl,
                   decoration: const InputDecoration(labelText: 'Notes (Proof of purchase location, return info)', border: OutlineInputBorder()),
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.camera_alt_outlined),
+                        label: const Text('Scan Receipt'),
+                        onPressed: () async {
+                          final file = await picker.pickImage(source: ImageSource.camera, imageQuality: 80);
+                          if (file != null) setModalState(() => imagePath = file.path);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.photo_library_outlined),
+                        label: const Text('From Gallery'),
+                        onPressed: () async {
+                          final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+                          if (file != null) setModalState(() => imagePath = file.path);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                if (imagePath.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: kIsWeb
+                        ? Image.network(
+                            imagePath,
+                            height: 120,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const Text('Receipt photo attached'),
+                          )
+                        : Image.file(
+                            File(imagePath),
+                            height: 120,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const Text('Receipt photo attached'),
+                          ),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
@@ -177,6 +229,7 @@ class _WarrantyScreenState extends State<WarrantyScreen> {
                         receiptNumber: receiptCtrl.text.trim(),
                         assignedMember: memberCtrl.text.trim(),
                         notes: notesCtrl.text.trim(),
+                        imagePath: imagePath,
                       );
 
                       if (isEdit) {
